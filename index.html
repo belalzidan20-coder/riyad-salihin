@@ -192,6 +192,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       var sa = a.replace(/ا/g, ""), sb = b.replace(/ا/g, "");
       return (Math.max(a.length, b.length) <= 3 && sa.length >= 2 && sa === sb) ? 1 : 0;
     }
+    if (Math.min(a.length, b.length) >= 3 && Math.abs(a.length - b.length) <= 2 && (a.indexOf(b) !== -1 || b.indexOf(a) !== -1)) return 0.9;   // containment (old app)
     var x = simOne(a, b);
     if (Math.min(ca.length, cb.length) >= 3) x = Math.max(x, simOne(ca, cb), simOne(ca, b), simOne(a, cb));  // ignore over-stripped stems
     else { ca = a; cb = b; }
@@ -239,6 +240,14 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       if ((q = merged(tok, p, e, 2)) >= 0) { st.pos = q + 1; R.hit = q; return R; }
       // recognizer split the current word into two tokens
       if (nxt && tok.length < e.length && similar(tok + nxt, e) >= 0.7) { st.pos = p + 1; R.hit = p; R.n = 2; return R; }
+      // anchor: near-miss on the current word, confirmed by the next heard token matching the next expected word
+      if (nxt && nxt.length >= 3 && nxt !== "SAW") {
+        var q2 = p + 1; while (q2 < norms.length && !norms[q2]) q2++;
+        if (q2 < norms.length && norms[q2] !== "SAW" && similarP(nxt, norms[q2]) >= TH) {
+          var A = phon(tok), Ae = phon(e), d = Math.min(lev(A, Ae), lev(phon(core(tok)), phon(core(e))), lev(A.replace(/^و/, ""), Ae));
+          if (Math.abs(tok.length - e.length) <= 2 && d <= (e.length <= 3 ? 1 : 2) && d < Math.max(tok.length, e.length)) { st.pos = p + 1; R.hit = p; return R; }
+        }
+      }
       return R;
     };
     st.reset = function (pos) { if (st.pos !== pos) { st.pos = pos; st.saw = false; } };
@@ -407,6 +416,17 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   // Interim results resend the whole transcript: every heard token that revealed a word (and everything
   // before it) is consumed once and never re-matched -> a repeated word can't reveal its later duplicate.
   // The last consumed token is re-located by content, since revisions can merge/split earlier tokens.
+  // Tarteel-style: a clearly different word said at the current position briefly outlines the hidden word red (never reveals)
+  var mistakes = 0;
+  function mistake(n, nx) {
+    var p = cur + 1; if (p >= norms.length || !norms[p] || norms[p] === "SAW" || n.length < 2 || SAW_PARTS[n]) return;
+    if (similarP(n, norms[p]) >= 0.4 || (nx && similarP(nx, norms[p]) >= TH)) return;          // near-miss / split word, not a mistake
+    for (var k = Math.max(0, cur - 3); k <= cur; k++) if (similarP(n, norms[k]) >= TH) return;  // repeating words already read
+    mistakes++;
+    var el = typeof BOX !== "undefined" && BOX[p]; if (!el || !el.style) return;
+    el.style.outline = "2px solid #c0392b"; el.style.outlineOffset = "1px";
+    setTimeout(function () { if (el.style.outline.indexOf("solid") >= 0) { el.style.outline = ""; el.style.outlineOffset = ""; } }, 700);
+  }
   function feedTokens(raw, ri, fin) {
     if (!matcher) return;
     ri = ri || 0;
@@ -430,7 +450,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
         C.lastHit = i + r.n - 1; i += r.n - 1; if (r.hit > last) last = r.hit;
         C.tok = norm(raw[C.lastHit]); C.occ = 0;
         for (q = 0; q <= C.lastHit; q++) if (norm(raw[q]) === C.tok) C.occ++;
-      }
+      } else if ((fin || i < raw.length - 1) && i > (C.bad == null ? -1 : C.bad)) { C.bad = i; mistake(n, nx); }
     }
     if (last > cur) {
       setCur(last);
@@ -516,8 +536,8 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     return out;
   }
   var ASRS = { on: false, worker: null, ready: false, loading: false, stream: null, ctx: null, node: null, chunk: 0, busy: false, queue: [], slow: 0, loadT: null, files: {} };
-  function asrSaved() { try { return localStorage.getItem("asrOn") === "1"; } catch (e) { return false; } }
-  function asrSave(v) { try { localStorage.setItem("asrOn", v ? "1" : "0"); } catch (e) {} }
+  function asrSaved() { try { return localStorage.getItem("asrOn2") === "1"; } catch (e) { return false; } }
+  function asrSave(v) { try { localStorage.setItem("asrOn2", v ? "1" : "0"); } catch (e) {} }
   function asrNotice(t) { $("heard").textContent = t; }
   function asrBtn() { var b = $("btnASR"); if (b) { b.textContent = ASRS.on ? "سماع محسّن ✓" : "سماع محسّن"; b.className = ASRS.on ? "livebtn" : ""; } }
   function asrFallback(why) {
@@ -731,9 +751,9 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     if (rec) { rec.onend = rec.onerror = rec.onresult = rec.onstart = null; try { rec.abort(); } catch (e) {} }
     used = {}; lastEvt = Date.now();          // fresh token tracking per session even if onstart never fires
     var r = rec = new C();
-    r.lang = "ar-SA"; r.continuous = !IOS; r.interimResults = true; r.maxAlternatives = 3;
+    r.lang = "ar-SA"; r.continuous = true; r.interimResults = true; r.maxAlternatives = 3;
     r.onstart = function () { if (r !== rec) return; used = {}; session++; lastEvt = Date.now(); badge(true); };   // fresh token tracking per session
-    r.onend = function () { if (r !== rec) return; if (listen) { badge(true); scheduleRestart(250); } else badge(false); };
+    r.onend = function () { if (r !== rec) return; if (listen) { badge(true); scheduleRestart(0); } else badge(false); };
     r.onerror = function (e) {
       if (r !== rec) return;
       if (e.error === "not-allowed" || e.error === "service-not-allowed") { listen = false; clearTimeout(restartT); badge(false); alert("اسمح بالميكروفون"); return; }
