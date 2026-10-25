@@ -145,7 +145,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   </main>
 </div>
 <script>
-(function(){var st=document.createElement("style");st.textContent=".bx.now{background:transparent;box-shadow:none}.bx.hide.now{background:var(--paper);box-shadow:0 0 0 1.5px var(--paper)}.bx.hint.now{background:var(--paper)}";document.head.appendChild(st);})(); /* no current-word underline */
+(function(){var st=document.createElement("style");st.textContent=".bx.now{box-shadow:none}#installBar,#iosHelp,#btnInstall2,#st{display:none!important}";document.head.appendChild(st);})(); /* no current-word underline */
 (function(){var h=document.getElementById("modeHide"),t=document.getElementById("modeHint"),w=document.getElementById("modeShow"),r=document.getElementById("btnHideAll"),d=document.querySelector(".dock"),m=document.getElementById("btnMic");if(!(h&&t&&w&&r&&d&&m))return;h.textContent="إخفاء";w.textContent="إظهار";r.textContent="إعادة";[t,w,h,r].forEach(function(e){d.insertBefore(e,m);});var st=document.createElement("style");st.textContent=".dock{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-flow:row dense;gap:6px}.dock>#btnASR{grid-column:1/-1}.dock>button{width:100%;min-width:0;padding:8px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dock>#btnMic{grid-column:span 2}.dock>.prog{grid-column:span 3;align-self:center}.dock>#cnt{text-align:center}";document.head.appendChild(st);})(); /* button rename+regroup into dock */
 
 (function () {
