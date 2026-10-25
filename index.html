@@ -806,7 +806,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   function cldStart() {
     if (!CLOUD_URL) { cldFallback("الخدمة غير مفعّلة بعد"); return; }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.WebSocket) { cldFallback("غير مدعوم"); return; }
-    listen = true; badge(true); stuckAt = -2; stuckHint(); CLD.fails = 0;
+    listen = true; badge(true); stuckAt = -2; stuckHint(); CLD.fails = 0; CLD.idle = false; CLD.pend = []; CLD.pre = []; CLD.preN = 0; CLD.lastVoice = Date.now();
     $("heard").textContent = "جارٍ الاتصال بالسماع السحابي…";
     cldConnect(); cldCapture();
     clearInterval(CLD.kaT); CLD.kaT = setInterval(cldTick, 2000);
@@ -814,7 +814,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   function cldConnect() {
     var ws; try { ws = new WebSocket(CLOUD_URL + cldTerms()); } catch (e) { cldFallback("تعذّر الاتصال"); return; }
     ws.binaryType = "arraybuffer"; CLD.ws = ws; CLD.opened = false;
-    ws.onopen = function () { if (ws !== CLD.ws) return; CLD.opened = true; CLD.fails = 0; $("heard").textContent = "السماع السحابي جاهز — اقرأ"; };
+    ws.onopen = function () { if (ws !== CLD.ws) return; CLD.opened = true; CLD.fails = 0; cldOpened(); ws.addEventListener("close", cldClosed); if (CLD.pend.length) { for (var k = 0; k < CLD.pend.length; k++) ws.send(CLD.pend[k].buffer); CLD.pend = []; } $("heard").textContent = "السماع السحابي جاهز — اقرأ"; };
     ws.onmessage = function (ev) {
       if (ws !== CLD.ws || !listen) return;
       var d; try { d = JSON.parse(ev.data); } catch (e) { return; }
@@ -831,7 +831,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     };
     ws.onclose = function (ev) {
       if (ws !== CLD.ws || !listen || !CLD.on) return;
-      CLD.ws = null;
+      CLD.ws = null; if (CLD.idle) return;
       if (ev.code === 4001 || ev.code === 1008) { cldFallback("انتهى الحد اليومي"); return; }
       if (++CLD.fails >= 3) { cldFallback(CLD.opened ? "انقطع الاتصال" : "تعذّر الاتصال"); return; }
       setTimeout(function () { if (listen && CLD.on && !CLD.ws) cldConnect(); }, 500 * CLD.fails);
@@ -846,17 +846,62 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       var src = ctx.createMediaStreamSource(st), node = ctx.createScriptProcessor(4096, 1, 1), ratio = ctx.sampleRate / 16000;
       node.onaudioprocess = function (e) {
         CLD.lastFrame = Date.now();
-        var ws = CLD.ws; if (!listen || !ws || ws.readyState !== 1) return;
-        var x = e.inputBuffer.getChannelData(0), n = Math.floor(x.length / ratio), out = new Int16Array(n);
-        for (var i = 0; i < n; i++) { var v = x[Math.floor(i * ratio)]; v = v < -1 ? -1 : v > 1 ? 1 : v; out[i] = v < 0 ? v * 32768 : v * 32767; }
-        ws.send(out.buffer);
+        if (!listen || !CLD.on) return;
+        var x = e.inputBuffer.getChannelData(0), n = Math.floor(x.length / ratio), out = new Int16Array(n), ss = 0;
+        for (var i = 0; i < n; i++) { var v = x[Math.floor(i * ratio)]; v = v < -1 ? -1 : v > 1 ? 1 : v; ss += v * v; out[i] = v < 0 ? v * 32768 : v * 32767; }
+        cldVad(out, Math.sqrt(ss / (n || 1)));
       };
       src.connect(node); node.connect(ctx.destination); if (ctx.resume) ctx.resume();
       CLD.stream = st; CLD.ctx = ctx; CLD.node = node; CLD.lastFrame = Date.now();
     }).catch(function () { listen = false; badge(false); cldStop(); alert("اسمح بالميكروفون"); });
   }
+  // ---- silence pause (saves Deepgram time): after 10 s of silence the Worker stream is closed (not counted in quota);
+  // mic stays open locally; on speech it reconnects silently and first sends ~1 s of pre-roll + everything said while connecting.
+  var VAD_SIL_MS = 10000, VAD_TH = 0.012, VAD_PRE = 16000;    // RMS threshold (adaptive floor below), 1 s pre-roll @16 kHz
+  CLD.idle = false; CLD.pre = []; CLD.preN = 0; CLD.pend = []; CLD.lastVoice = Date.now(); CLD.floor = 0.004;
+  function cldVad(buf, rms) {
+    var now = Date.now();
+    if (rms < CLD.floor * 3) CLD.floor = CLD.floor * 0.98 + rms * 0.02;            // track noise floor in quiet frames
+    var voiced = rms > Math.max(VAD_TH, CLD.floor * 3);
+    if (voiced) CLD.lastVoice = now;
+    var ws = CLD.ws;
+    if (CLD.idle) {
+      CLD.pre.push(buf); CLD.preN += buf.length;
+      while (CLD.pre.length > 1 && CLD.preN - CLD.pre[0].length >= VAD_PRE) CLD.preN -= CLD.pre.shift().length;
+      if (voiced) { CLD.idle = false; CLD.pend = CLD.pre; CLD.pre = []; CLD.preN = 0; CLD.seg++; CLD.fails = 0; cldConnect(); }
+      return;
+    }
+    if (ws && ws.readyState === 1) {
+      if (CLD.pend.length) { for (var k = 0; k < CLD.pend.length; k++) ws.send(CLD.pend[k].buffer); CLD.pend = []; }
+      ws.send(buf.buffer);
+      if (now - CLD.lastVoice > VAD_SIL_MS) cldIdle();
+    } else { CLD.pend.push(buf); if (CLD.pend.length > 400) CLD.pend.shift(); }   // connecting: queue (nothing lost)
+  }
+  function cldIdle() {
+    var ws = CLD.ws; CLD.ws = null; CLD.idle = true; cldClosed(); CLD.pre = []; CLD.preN = 0; CLD.pend = [];
+    if (ws) { try { ws.send(JSON.stringify({ type: "Finalize" })); } catch (e) {} setTimeout(function () { try { ws.send(JSON.stringify({ type: "CloseStream" })); } catch (e) {} try { ws.close(1000); } catch (e) {} }, 400); }
+  }
+  // ---- daily usage line «استخدمت X من ٦٠ دقيقة اليوم» (Worker /usage = KV quota for this IP/day; live estimate while streaming)
+  var USAGE_URL = CLOUD_URL.replace(/^wss:/, "https:").replace(/\/listen$/, "/usage");
+  CLD.useBase = null; CLD.useLim = 60; CLD.openT = 0; CLD.useT = 0;
+  function arD(n) { return String(n).replace(/\d/g, function (d) { return "٠١٢٣٤٥٦٧٨٩"[d]; }); }
+  function cldUsageShow() {
+    var el = $("usage"); if (!el || CLD.useBase === null) return;
+    var sec = CLD.useBase + (CLD.openT ? (Date.now() - CLD.openT) / 1000 : 0);
+    el.textContent = "استخدمت " + arD(Math.min(CLD.useLim, Math.ceil(sec / 60))) + " من " + arD(CLD.useLim) + " دقيقة اليوم";
+  }
+  function cldUsage() {
+    CLD.useT = Date.now();
+    fetch(USAGE_URL, { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (u) {
+      if (CLD.openT) return;                                    // a stream is open: keep the live estimate
+      CLD.useBase = Number(u.usedSec) || 0; CLD.useLim = Number(u.limitMin) || 60; cldUsageShow();
+    }).catch(function () {});
+  }
+  function cldOpened() { if (CLD.useBase === null) CLD.useBase = 0; CLD.openT = Date.now(); }
+  function cldClosed() { if (CLD.openT) { CLD.useBase += Math.ceil((Date.now() - CLD.openT) / 1000); CLD.openT = 0; cldUsageShow(); setTimeout(cldUsage, 2500); } }
   function cldTick() {                       // keep-alive: mic/AudioContext stalled -> resume or re-capture
     if (!listen || !CLD.on) { clearInterval(CLD.kaT); return; }
+    cldUsageShow();
     if (CLD.ctx && CLD.ctx.state !== "running" && CLD.ctx.resume) { try { CLD.ctx.resume(); } catch (e) {} }
     if (CLD.stream && Date.now() - CLD.lastFrame > 4000) { cldStopCapture(); cldCapture(); }
     if (CLD.ws && CLD.ws.readyState === 1) { try { CLD.ws.send(JSON.stringify({ type: "KeepAlive" })); } catch (e) {} }
@@ -867,13 +912,14 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     if (CLD.ctx) { try { CLD.ctx.close(); } catch (e) {} CLD.ctx = null; }
   }
   function cldStop() {
-    clearInterval(CLD.kaT); cldStopCapture();
+    clearInterval(CLD.kaT); cldStopCapture(); cldClosed();
     var ws = CLD.ws; CLD.ws = null;
     if (ws) { try { ws.send(JSON.stringify({ type: "CloseStream" })); } catch (e) {} try { ws.close(1000); } catch (e) {} }
   }
   function cldInit() {
     if (typeof document === "undefined" || !document.createElement || $("btnCloud")) return;
     var mic = $("btnMic"); if (!mic || !mic.parentNode) return;
+    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); cldUsage(); }
     var b = document.createElement("button"); b.type = "button"; b.id = "btnCloud"; b.title = "تعرّف سحابي على الكلام (يحتاج اتصال إنترنت)";
     mic.parentNode.insertBefore(b, mic.nextSibling);
     b.addEventListener("click", function (e) {
