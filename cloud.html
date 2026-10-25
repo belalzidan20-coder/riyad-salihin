@@ -881,6 +881,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       cldBtn(); if (!CLD.on) $("heard").textContent = "السماع السحابي متوقف — يُستخدم التعرّف المدمج";
       if (was) startMic();
     });
+    var hd = $("heard"); if (hd && hd.style) hd.style.display = "none";   // cloud test page: no heard-transcript box
     CLD.on = cldSaved(); if (CLD.on && ASRS.on) { ASRS.on = false; asrSave(false); asrBtn(); } cldBtn();
   }
   function startMic() {
