@@ -490,8 +490,8 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     return {
       push: function (x) {
         var e = 0; for (var i = 0; i < x.length; i++) e += x[i] * x[i];
-        var rms = Math.sqrt(e / x.length), loud = rms > Math.max(0.012, floor * 3);
-        if (!loud) floor = floor * 0.95 + rms * 0.05;
+        var rms = Math.sqrt(e / x.length), loud = rms > Math.max(0.012, Math.min(floor * 3, 0.04));
+        if (!loud) floor = Math.min(0.02, floor * 0.95 + rms * 0.05);
         if (!speech && !loud) { pre.push(x); var pl = 0; for (i = pre.length - 1; i >= 0; i--) pl += pre[i].length; while (pre.length && pl - pre[0].length > rate * PRE) { pl -= pre[0].length; pre.shift(); } return; }
         if (!speech) { speech = true; for (i = 0; i < pre.length; i++) { buf.push(pre[i]); lv.push(0); len += pre[i].length; } pre = []; }
         buf.push(x); len += x.length; lv.push(rms);
@@ -506,7 +506,8 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
           if (keep.length) { speech = true; buf = keep; lv = keepLv; for (i = 0; i < keep.length; i++) len += keep[i].length; }
         }
       },
-      flush: flush
+      flush: flush,
+      reset: function () { flush(); pre = []; floor = 0.004; }
     };
   }
   function resample(a, from, to) {
@@ -548,12 +549,15 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
         asrNotice(listen ? "السماع المحسّن جاهز — اقرأ" : "السماع المحسّن جاهز");
         asrPump();
       } else if (m.type === "text") {
-        ASRS.busy = false;
-        if (m.ms > 6000) { if (++ASRS.slow >= 2) { asrFallback("بطيء على هذا الجهاز"); return; } } else ASRS.slow = 0;
+        ASRS.busy = false; ASRS.errs = 0; ASRS.lastOut = Date.now();
+        if (m.ms > 6000 && m.ms > 2.5 * (ASRS.dur || 3) * 1000) { if (++ASRS.slow >= 3) { asrFallback("بطيء على هذا الجهاز"); return; } } else ASRS.slow = 0;
         var toks = asrSplit(tokenize(m.text));
         if (toks.length && listen) { asrNotice("سمعت: " + m.text.trim()); feedTokens(toks, "w" + m.id, true); }
         asrPump();
-      } else if (m.type === "error") { asrFallback(ASRS.ready ? "خطأ أثناء التعرّف" : "فشل تحميل النموذج"); }
+      } else if (m.type === "error") {          // one bad chunk must not end listening: skip it, give up only after 3 in a row
+        if (!ASRS.ready || ++ASRS.errs >= 3) { asrFallback(ASRS.ready ? "خطأ أثناء التعرّف" : "فشل تحميل النموذج"); return; }
+        ASRS.busy = false; asrPump();
+      }
     };
     ASRS.loadT = setTimeout(function () { if (!ASRS.ready) asrFallback("انتهت مهلة التحميل"); }, 240000);
     w.postMessage({ type: "load", model: ASR_MODEL, gpu: true });
@@ -586,7 +590,11 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   }
   function asrPump() {
     if (!ASRS.ready || ASRS.busy || !ASRS.queue.length || !ASRS.worker) return;
-    var a = ASRS.queue.shift(); ASRS.busy = true;
+    var a = ASRS.queue.shift();
+    while (ASRS.queue.length && a.length + ASRS.queue[0].length <= 16000 * 8) {
+      var b = ASRS.queue.shift(), c = new Float32Array(a.length + b.length); c.set(a); c.set(b, a.length); a = c;
+    }
+    ASRS.busy = true; ASRS.sent = Date.now(); ASRS.dur = a.length / 16000;
     ASRS.worker.postMessage({ type: "run", id: ++ASRS.chunk, audio: a, prompt: asrPrompt() }, [a.buffer]);
   }
   function asrStart() {
@@ -594,19 +602,71 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     if (!asrWorker()) return;
     listen = true; badge(true); stuckAt = -2; stuckHint();
     if (!ASRS.ready) asrNotice("جارٍ تجهيز السماع المحسّن…");
+    asrCapture();
+  }
+  function asrCapture() {
+    ASRS.capturing = true; ASRS.capT = Date.now();
     navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(function (st) {
       if (!listen || !ASRS.on) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
       var AC = window.AudioContext || window.webkitAudioContext, ctx;
       try { ctx = new AC({ sampleRate: 16000 }); } catch (e) { ctx = new AC(); }
       var src = ctx.createMediaStreamSource(st), node = ctx.createScriptProcessor(2048, 1, 1);
       var ch = makeChunker(ctx.sampleRate, function (a) { ASRS.queue.push(a); asrPump(); });
-      node.onaudioprocess = function (e) { if (listen) ch.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+      node.onaudioprocess = function (e) { ASRS.lastFrame = Date.now(); if (listen) ch.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+      ctx.onstatechange = function () { if (listen && ASRS.on && ctx.state !== "running" && ctx.state !== "closed") asrResume(); };
+      st.getTracks().forEach(function (t) { t.onended = function () { if (listen && ASRS.on) asrRecapture("انقطع الميكروفون"); }; });
       src.connect(node); node.connect(ctx.destination);
       if (ctx.resume) ctx.resume();
-      ASRS.stream = st; ASRS.ctx = ctx; ASRS.node = node; ASRS.ch = ch;
-    }).catch(function () { listen = false; badge(false); clearInterval(stuckT); alert("اسمح بالميكروفون"); });
+      ASRS.stream = st; ASRS.ctx = ctx; ASRS.node = node; ASRS.ch = ch; ASRS.lastFrame = Date.now(); ASRS.capturing = false;
+      if (ASRS.restarting) { ASRS.restarting = false; asrNotice("✓ عاد الاستماع — تابع القراءة"); }
+      asrKeepAlive();
+    }).catch(function () {
+      ASRS.capturing = false;
+      if (ASRS.restarting) { ASRS.restarting = false; asrNotice("↻ تعذّر إعادة تشغيل الميكروفون — سيُعاد المحاولة"); return; }
+      listen = false; badge(false); clearInterval(stuckT); alert("اسمح بالميكروفون");
+    });
+  }
+  // keep-alive: while listening in Whisper mode, keep the mic + AudioContext alive until the user presses stop
+  function asrResume() {
+    var c = ASRS.ctx; if (!c || !c.resume) return;
+    try { var r = c.resume(); if (r && r.catch) r.catch(function () {}); } catch (e) {}
+  }
+  function asrRecapture(why) {
+    if (!listen || !ASRS.on || ASRS.capturing) return;
+    asrNotice("↻ " + (why || "إعادة تشغيل الميكروفون") + "… لحظة");
+    asrStopCapture(); ASRS.restarting = true; ASRS.restarts = (ASRS.restarts || 0) + 1; asrCapture();
+  }
+  function asrKeepAlive() {
+    clearInterval(ASRS.kaT);
+    ASRS.kaT = setInterval(function () { asrTick(Date.now()); }, 2000);
+    if (!ASRS.visHook && typeof document !== "undefined" && document.addEventListener) {
+      ASRS.visHook = true;
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible" && listen && ASRS.on) { asrResume(); asrTick(Date.now() + 5000); }
+      });
+    }
+  }
+  function asrTick(now) {
+    if (!listen || !ASRS.on) { clearInterval(ASRS.kaT); return; }
+    if (ASRS.capturing) { if (now - ASRS.capT > 15000) { ASRS.capturing = false; asrRecapture("إعادة طلب الميكروفون"); } return; }
+    var tr = ASRS.stream && ASRS.stream.getTracks ? ASRS.stream.getTracks()[0] : null;
+    if (ASRS.ctx && ASRS.ctx.state && ASRS.ctx.state !== "running") asrResume();
+    if (!ASRS.stream || (tr && (tr.readyState === "ended" || tr.muted && now - ASRS.lastFrame > 3000)) || now - (ASRS.lastFrame || 0) > 4000) {
+      asrRecapture("إعادة تشغيل الميكروفون"); return;
+    }
+    if (ASRS.busy && now - ASRS.sent > 25000 && ASRS.worker) {   // worker hung: recreate it (model is cached), keep listening
+      try { ASRS.worker.terminate(); } catch (e) {}
+      ASRS.worker = null; ASRS.ready = false; ASRS.busy = false; asrNotice("↻ إعادة تشغيل السماع المحسّن… لحظة"); asrWorker();
+    }
+  }
+  function asrStopCapture() {
+    if (ASRS.ch) { try { ASRS.ch.reset(); } catch (e) {} ASRS.ch = null; }
+    if (ASRS.node) { try { ASRS.node.disconnect(); ASRS.node.onaudioprocess = null; } catch (e) {} ASRS.node = null; }
+    if (ASRS.stream) { ASRS.stream.getTracks().forEach(function (t) { t.onended = null; t.stop(); }); ASRS.stream = null; }
+    if (ASRS.ctx) { try { ASRS.ctx.onstatechange = null; ASRS.ctx.close(); } catch (e) {} ASRS.ctx = null; }
   }
   function asrStop() {
+    clearInterval(ASRS.kaT); ASRS.capturing = false; ASRS.restarting = false;
     if (ASRS.ch) { try { ASRS.ch.flush(); } catch (e) {} ASRS.ch = null; }
     if (ASRS.node) { try { ASRS.node.disconnect(); ASRS.node.onaudioprocess = null; } catch (e) {} ASRS.node = null; }
     if (ASRS.stream) { ASRS.stream.getTracks().forEach(function (t) { t.stop(); }); ASRS.stream = null; }
