@@ -765,9 +765,6 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       var heardTxt = [];
       for (var h = 0; h < ev.results.length; h++) heardTxt.push((ev.results[h][0] && ev.results[h][0].transcript) || "");
       $("heard").textContent = "سمعت: " + heardTxt.join(" ").trim();     // actual recognizer transcript
-      if (IOS && ev.results.length && ev.results[ev.results.length - 1].isFinal) {   // iOS may stay open silently after a final
-        setTimeout(function () { if (r === rec && listen) { try { r.stop(); } catch (e) {} } }, 600);
-      }
       for (var i = ev.resultIndex; i < ev.results.length; i++) {
         var res = ev.results[i], before = cur;
         for (var j = 0; j < res.length && j < 3; j++) {          // try each alternative until one advances
