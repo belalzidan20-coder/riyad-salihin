@@ -882,7 +882,13 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       if (was) startMic();
     });
     var hd = $("heard"); if (hd && hd.style) hd.style.display = "none";   // cloud test page: no heard-transcript box
-    CLD.on = cldSaved(); if (CLD.on && ASRS.on) { ASRS.on = false; asrSave(false); asrBtn(); } cldBtn();
+    // cloud test page: cloud listening always on (built-in fallback stays automatic), no mode buttons
+    CLD.on = true; if (ASRS.on) { ASRS.on = false; asrBtn(); }
+    b.style.display = "none"; var ab = $("btnASR"); if (ab) ab.style.display = "none";
+    // phones: hide the collapsed side list (empty beige strip above السابق/التالي; the jump box already navigates)
+    var st = document.createElement("style"); st.textContent = "@media (max-width:700px){aside{display:none}}"; document.head.appendChild(st);
+    // finished hadith: drop the current-word highlight on the last word (its box runs to the line end)
+    var paint0 = paint; paint = function () { paint0(); var L = BOX[words.length - 1]; if (cur === words.length - 1 && L && L.classList) L.classList.remove("now"); };
   }
   function startMic() {
     if (CLD.on) { matcher = makeMatcher(norms); cldStart(); return; }
