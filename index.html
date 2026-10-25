@@ -708,6 +708,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       e.stopPropagation();
       var was = listen; if (was) stopMic();
       ASRS.on = !ASRS.on; asrSave(ASRS.on); asrBtn();
+      if (ASRS.on && typeof CLD !== "undefined" && CLD.on) { CLD.on = false; cldSave(false); cldBtn(); }
       if (ASRS.on) asrWorker(); else asrNotice("السماع المحسّن متوقف — يُستخدم التعرّف المدمج");
       if (was) startMic();
     });
@@ -779,7 +780,121 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     };
     return r;
   }
+
+  // ---- «سماع سحابي»: mic -> 16 kHz PCM -> Worker proxy (holds the key) -> Deepgram nova-3 ar; transcripts go to feedTokens unchanged
+  var CLOUD_URL = "wss://riyad-tarteel-asr.riyad-tarteel.workers.dev/listen";   // set after deploying the Worker
+  var CLOUD_KT = false;                                                    // keyterm boosting (measured slightly worse on test audio)
+  var CLD = { on: false, ws: null, ctx: null, stream: null, node: null, seg: 0, fails: 0, lastFrame: 0, kaT: null };
+  function cldSaved() { try { return localStorage.getItem("cloudOn") === "1"; } catch (e) { return false; } }
+  function cldSave(v) { try { localStorage.setItem("cloudOn", v ? "1" : "0"); } catch (e) {} }
+  function cldBtn() { var b = $("btnCloud"); if (b) { b.textContent = CLD.on ? "سماع سحابي ✓" : "سماع سحابي"; b.className = CLD.on ? "livebtn" : ""; } }
+  function cldTerms() {
+    if (!CLOUD_KT) return "";
+    var seen = {}, out = [];
+    for (var i = 0; i < words.length && out.length < 40; i++) {
+      var w = String(words[i]).replace(/[^\u0621-\u064A]/g, "");
+      if (w.length >= 5 && !seen[w]) { seen[w] = 1; out.push(w); }
+    }
+    return out.length ? "?kt=" + encodeURIComponent(out.join(",")) : "";
+  }
+  function cldFallback(why) {
+    var was = listen;
+    cldStop(); CLD.on = false; cldSave(false); cldBtn();
+    $("heard").textContent = "تعذّر السماع السحابي (" + why + ")، تم الرجوع إلى التعرّف المدمج في المتصفح.";
+    if (was) { listen = false; startMic(); }
+  }
+  function cldStart() {
+    if (!CLOUD_URL) { cldFallback("الخدمة غير مفعّلة بعد"); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.WebSocket) { cldFallback("غير مدعوم"); return; }
+    listen = true; badge(true); stuckAt = -2; stuckHint(); CLD.fails = 0;
+    $("heard").textContent = "جارٍ الاتصال بالسماع السحابي…";
+    cldConnect(); cldCapture();
+    clearInterval(CLD.kaT); CLD.kaT = setInterval(cldTick, 2000);
+  }
+  function cldConnect() {
+    var ws; try { ws = new WebSocket(CLOUD_URL + cldTerms()); } catch (e) { cldFallback("تعذّر الاتصال"); return; }
+    ws.binaryType = "arraybuffer"; CLD.ws = ws; CLD.opened = false;
+    ws.onopen = function () { if (ws !== CLD.ws) return; CLD.opened = true; CLD.fails = 0; $("heard").textContent = "السماع السحابي جاهز — اقرأ"; };
+    ws.onmessage = function (ev) {
+      if (ws !== CLD.ws || !listen) return;
+      var d; try { d = JSON.parse(ev.data); } catch (e) { return; }
+      if (d.type !== "Results" || !d.channel || !d.channel.alternatives) return;
+      var alts = d.channel.alternatives, tr = (alts[0] && alts[0].transcript) || "";
+      if (tr) $("heard").textContent = "سمعت: " + tr;
+      var before = cur;
+      for (var j = 0; j < alts.length && j < 3; j++) {
+        var toks = tokenize(alts[j].transcript || "");
+        if (toks.length) feedTokens(toks, "c" + CLD.seg, !!d.is_final);
+        if (cur !== before) break;
+      }
+      if (d.is_final) CLD.seg++;
+    };
+    ws.onclose = function (ev) {
+      if (ws !== CLD.ws || !listen || !CLD.on) return;
+      CLD.ws = null;
+      if (ev.code === 4001 || ev.code === 1008) { cldFallback("انتهى الحد اليومي"); return; }
+      if (++CLD.fails >= 3) { cldFallback(CLD.opened ? "انقطع الاتصال" : "تعذّر الاتصال"); return; }
+      setTimeout(function () { if (listen && CLD.on && !CLD.ws) cldConnect(); }, 500 * CLD.fails);
+    };
+    ws.onerror = function () {};
+  }
+  function cldCapture() {
+    navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(function (st) {
+      if (!listen || !CLD.on) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
+      var AC = window.AudioContext || window.webkitAudioContext, ctx;
+      try { ctx = new AC({ sampleRate: 16000 }); } catch (e) { ctx = new AC(); }
+      var src = ctx.createMediaStreamSource(st), node = ctx.createScriptProcessor(4096, 1, 1), ratio = ctx.sampleRate / 16000;
+      node.onaudioprocess = function (e) {
+        CLD.lastFrame = Date.now();
+        var ws = CLD.ws; if (!listen || !ws || ws.readyState !== 1) return;
+        var x = e.inputBuffer.getChannelData(0), n = Math.floor(x.length / ratio), out = new Int16Array(n);
+        for (var i = 0; i < n; i++) { var v = x[Math.floor(i * ratio)]; v = v < -1 ? -1 : v > 1 ? 1 : v; out[i] = v < 0 ? v * 32768 : v * 32767; }
+        ws.send(out.buffer);
+      };
+      src.connect(node); node.connect(ctx.destination); if (ctx.resume) ctx.resume();
+      CLD.stream = st; CLD.ctx = ctx; CLD.node = node; CLD.lastFrame = Date.now();
+    }).catch(function () { listen = false; badge(false); cldStop(); alert("اسمح بالميكروفون"); });
+  }
+  function cldTick() {                       // keep-alive: mic/AudioContext stalled -> resume or re-capture
+    if (!listen || !CLD.on) { clearInterval(CLD.kaT); return; }
+    if (CLD.ctx && CLD.ctx.state !== "running" && CLD.ctx.resume) { try { CLD.ctx.resume(); } catch (e) {} }
+    if (CLD.stream && Date.now() - CLD.lastFrame > 4000) { cldStopCapture(); cldCapture(); }
+    if (CLD.ws && CLD.ws.readyState === 1) { try { CLD.ws.send(JSON.stringify({ type: "KeepAlive" })); } catch (e) {} }
+  }
+  function cldStopCapture() {
+    if (CLD.node) { try { CLD.node.disconnect(); CLD.node.onaudioprocess = null; } catch (e) {} CLD.node = null; }
+    if (CLD.stream) { CLD.stream.getTracks().forEach(function (t) { t.stop(); }); CLD.stream = null; }
+    if (CLD.ctx) { try { CLD.ctx.close(); } catch (e) {} CLD.ctx = null; }
+  }
+  function cldStop() {
+    clearInterval(CLD.kaT); cldStopCapture();
+    var ws = CLD.ws; CLD.ws = null;
+    if (ws) { try { ws.send(JSON.stringify({ type: "CloseStream" })); } catch (e) {} try { ws.close(1000); } catch (e) {} }
+  }
+  function cldInit() {
+    if (typeof document === "undefined" || !document.createElement || $("btnCloud")) return;
+    var mic = $("btnMic"); if (!mic || !mic.parentNode) return;
+    var b = document.createElement("button"); b.type = "button"; b.id = "btnCloud"; b.title = "تعرّف سحابي على الكلام (يحتاج اتصال إنترنت)";
+    mic.parentNode.insertBefore(b, mic.nextSibling);
+    b.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var was = listen; if (was) stopMic();
+      CLD.on = !CLD.on; cldSave(CLD.on);
+      if (CLD.on && ASRS.on) { ASRS.on = false; asrSave(false); asrBtn(); }
+      cldBtn(); if (!CLD.on) $("heard").textContent = "السماع السحابي متوقف — يُستخدم التعرّف المدمج";
+      if (was) startMic();
+    });
+    var hd = $("heard"); if (hd && hd.style) hd.style.display = "none";   // cloud test page: no heard-transcript box
+    // cloud test page: cloud listening always on (built-in fallback stays automatic), no mode buttons
+    CLD.on = true; if (ASRS.on) { ASRS.on = false; asrBtn(); }
+    b.style.display = "none"; var ab = $("btnASR"); if (ab) ab.style.display = "none";
+    // phones: hide the collapsed side list (empty beige strip above السابق/التالي; the jump box already navigates)
+    var st = document.createElement("style"); st.textContent = "@media (max-width:700px){aside{display:none}}"; document.head.appendChild(st);
+    // finished hadith: drop the current-word highlight on the last word (its box runs to the line end)
+    var paint0 = paint; paint = function () { paint0(); var L = BOX[words.length - 1]; if (cur === words.length - 1 && L && L.classList) L.classList.remove("now"); };
+  }
   function startMic() {
+    if (CLD.on) { matcher = makeMatcher(norms); cldStart(); return; }
     if (ASRS.on) { matcher = makeMatcher(norms); asrStart(); return; }
     var C = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!C) { alert("افتح الصفحة في Chrome أو Edge"); return; }
@@ -790,11 +905,11 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   }
   function stopMic() {
     listen = false; clearTimeout(restartT); clearInterval(watchT); clearInterval(stuckT);
-    asrStop(); ASRS.queue = [];
+    asrStop(); ASRS.queue = []; cldStop();
     if (rec) { var r = rec; rec = null; r.onend = r.onerror = r.onresult = r.onstart = null; try { r.stop(); } catch (e) {} }
     badge(false);
   }
-  asrInit();
+  asrInit(); cldInit();
   function setMode(m) {
     mode = m;
     $("modeHide").classList.toggle("on", m === "hide");
