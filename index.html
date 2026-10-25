@@ -444,25 +444,40 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     'import { pipeline, env } from "__CDN__";',
     'env.allowLocalModels = false;',
     'try { env.useBrowserCache = typeof caches !== "undefined"; } catch (e) { env.useBrowserCache = false; }',
-    'try { env.backends.onnx.wasm.numThreads = 1; env.backends.onnx.wasm.proxy = false; } catch (e) {}',
-    'var asr = null;',
-    'async function load(model) {',
-    '  try { asr = await pipeline("automatic-speech-recognition", model, { dtype: { encoder_model: "fp32", decoder_model_merged: "q8" }, device: "wasm", progress_callback: function (p) { self.postMessage({ type: "progress", p: { status: p.status, file: p.file, loaded: p.loaded, total: p.total } }); } }); }',
-    '  catch (e) { if (env.useBrowserCache) { env.useBrowserCache = false; return load(model); } throw e; }',
+    'try { env.backends.onnx.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1; env.backends.onnx.wasm.proxy = false; } catch (e) {}',
+    'var asr = null, IDS = null, DEV = "wasm";',
+    'function prog(p) { self.postMessage({ type: "progress", p: { status: p.status, file: p.file, loaded: p.loaded, total: p.total } }); }',
+    'async function gpuOk() { try { if (!self.navigator || !navigator.gpu) return false; var ad = await navigator.gpu.requestAdapter(); return !!ad; } catch (e) { return false; } }',
+    'async function make(model, dev) { return pipeline("automatic-speech-recognition", model, { dtype: { encoder_model: "fp32", decoder_model_merged: "q8" }, device: dev, progress_callback: prog }); }',
+    'async function load(model, wantGpu) {',
+    '  var dev = (wantGpu && await gpuOk()) ? { encoder_model: "webgpu", decoder_model_merged: "wasm" } : "wasm";',
+    '  try { asr = await make(model, dev); DEV = dev === "wasm" ? "wasm" : "webgpu"; }',
+    '  catch (e) { if (dev !== "wasm") { asr = await make(model, "wasm"); DEV = "wasm"; } else if (env.useBrowserCache) { env.useBrowserCache = false; asr = await make(model, "wasm"); } else throw e; }',
+    '  var g = asr.model.generation_config, tk = asr.tokenizer;',
+    '  IDS = { prev: tk.model.tokens_to_ids.get("<|startofprev|>"), sot: g.decoder_start_token_id, ar: g.lang_to_id["<|ar|>"], tr: g.task_to_id.transcribe, nots: g.no_timestamps_token_id };',
+    '}',
+    'async function run(audio, prompt) {',
+    '  var init = [IDS.sot, IDS.ar, IDS.tr, IDS.nots], pre = [];',
+    '  if (prompt && IDS.prev != null) { pre = asr.tokenizer.encode(" " + prompt, { add_special_tokens: false }).slice(-40); pre = [IDS.prev].concat(pre); }',
+    '  var ids = pre.concat(init), f = await asr.processor(audio);',
+    '  var mx = Math.min(48, Math.ceil(audio.length / 16000 * 9) + 4);',
+    '  var out = await asr.model.generate(Object.assign({}, f, { decoder_input_ids: ids, max_new_tokens: mx, num_beams: 1, do_sample: false, return_timestamps: false, no_repeat_ngram_size: 3 }));',
+    '  var seq = Array.from(out.tolist ? out.tolist()[0] : out[0]).map(Number).slice(ids.length);',
+    '  return asr.tokenizer.decode(seq, { skip_special_tokens: true }).replace(/[^\\u0600-\\u06FF\\s]+/g, " ").replace(/\\s+/g, " ").trim();',
     '}',
     'self.onmessage = async function (ev) {',
     '  var m = ev.data;',
     '  try {',
-    '    if (m.type === "load") { await load(m.model); self.postMessage({ type: "ready" }); return; }',
-    '    if (m.type === "run") { var t = Date.now(); var o = await asr(m.audio, { language: "arabic", task: "transcribe", max_new_tokens: 64 });',
-    '      self.postMessage({ type: "text", id: m.id, text: (o && o.text) || "", ms: Date.now() - t }); }',
+    '    if (m.type === "load") { await load(m.model, m.gpu !== false); self.postMessage({ type: "ready", dev: DEV }); return; }',
+    '    if (m.type === "run") { var t = Date.now(); var text = await run(m.audio, m.prompt);',
+    '      self.postMessage({ type: "text", id: m.id, text: text || "", ms: Date.now() - t }); }',
     '  } catch (e) { self.postMessage({ type: "error", error: String((e && e.message) || e) }); }',
     '};'
   ].join("\n");
-  // silence-based chunking: ends a chunk after ~0.6 s of silence following speech, or at 4 s
+  // silence-based chunking: ends a chunk after ~0.5 s of silence following speech, or at 3.5 s
   function makeChunker(rate, onChunk, opt) {
     opt = opt || {};
-    var SIL = opt.sil || 0.6, MAX = opt.max || 4, PRE = 0.25;
+    var SIL = opt.sil || 0.5, MAX = opt.max || 3.5, PRE = 0.2;
     var buf = [], lv = [], len = 0, speech = false, silent = 0, floor = 0.004, pre = [];
     function flush() {
       if (speech && len > rate * 0.3) {
@@ -534,20 +549,45 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
         asrPump();
       } else if (m.type === "text") {
         ASRS.busy = false;
-        if (m.ms > 9000) { if (++ASRS.slow >= 2) { asrFallback("بطيء على هذا الجهاز"); return; } } else ASRS.slow = 0;
-        var toks = tokenize(m.text);
+        if (m.ms > 6000) { if (++ASRS.slow >= 2) { asrFallback("بطيء على هذا الجهاز"); return; } } else ASRS.slow = 0;
+        var toks = asrSplit(tokenize(m.text));
         if (toks.length && listen) { asrNotice("سمعت: " + m.text.trim()); feedTokens(toks, "w" + m.id, true); }
         asrPump();
       } else if (m.type === "error") { asrFallback(ASRS.ready ? "خطأ أثناء التعرّف" : "فشل تحميل النموذج"); }
     };
     ASRS.loadT = setTimeout(function () { if (!ASRS.ready) asrFallback("انتهت مهلة التحميل"); }, 240000);
-    w.postMessage({ type: "load", model: ASR_MODEL });
+    w.postMessage({ type: "load", model: ASR_MODEL, gpu: true });
     return w;
+  }
+  // context for Whisper = the words already recited (never the upcoming ones, so it cannot "hear" unsaid words)
+  function asrPrompt() {
+    var out = [];
+    for (var i = Math.max(0, cur - 11); i <= cur; i++) {
+      var w = String(words[i] || "").replace(/[\u064B-\u065F\u0670\u0640«»:،,.؛!?()]/g, "");
+      if (w === "ﷺ") w = "صلى الله عليه وسلم";
+      if (w) out.push(w);
+    }
+    return out.join(" ");
+  }
+  // Whisper sometimes glues two words ("بنيعوبا" = بن عبادة): split a token into the NEXT two expected words only
+  // (in order from the current position, so nothing is ever skipped); everything else passes through unchanged.
+  function asrSplit(toks) {
+    var e = cur + 1, out = [];
+    for (var i = 0; i < toks.length; i++) {
+      var t = norm(toks[i]);
+      if (e < norms.length && similarP(t, norms[e]) >= TH) { out.push(toks[i]); e++; continue; }
+      if (t.length >= 5 && e + 1 < norms.length && similarP(norms[e], t) < TH &&
+          Math.max(similarP(t, norms[e] + norms[e + 1]), similarP(t, core(norms[e]) + core(norms[e + 1]))) >= 0.55) {
+        out.push(words[e], words[e + 1]); e += 2; continue;
+      }
+      out.push(toks[i]);
+    }
+    return out;
   }
   function asrPump() {
     if (!ASRS.ready || ASRS.busy || !ASRS.queue.length || !ASRS.worker) return;
     var a = ASRS.queue.shift(); ASRS.busy = true;
-    ASRS.worker.postMessage({ type: "run", id: ++ASRS.chunk, audio: a }, [a.buffer]);
+    ASRS.worker.postMessage({ type: "run", id: ++ASRS.chunk, audio: a, prompt: asrPrompt() }, [a.buffer]);
   }
   function asrStart() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { asrFallback("الميكروفون غير متاح"); return; }
