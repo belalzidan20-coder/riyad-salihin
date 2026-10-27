@@ -71,11 +71,11 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
 @media(max-width:860px){.layout{grid-template-columns:1fr}aside{max-height:180px}.text{font-size:24px}}
 .ln{position:relative;width:100%;max-width:900px;margin:0 auto}
 .ln img{display:block;width:100%;height:100%}
-.bx{position:absolute;top:0;bottom:0;cursor:pointer;transition:none;contain:strict}
+.bx{position:absolute;top:0;bottom:0;cursor:pointer;transition:none;box-sizing:border-box}
 .ln{contain:layout paint}
-.bx.hide{background:var(--paper);box-shadow:0 0 0 1.5px var(--paper)}
-.bx.hint{background:var(--paper);opacity:.82}
-.bx.seen{background:transparent}
+.bx.hide{background:rgba(232,217,185,.95);border:1px solid rgba(90,58,30,.22);border-radius:7px;box-shadow:none}
+.bx.hint{background:rgba(90,58,30,.05);border:1px dashed rgba(90,58,30,.18);border-radius:7px;opacity:.9}
+.bx.seen{background:transparent;border:0;box-shadow:none;border-radius:0}
 .bx.now{background:rgba(139,90,43,.16);box-shadow:inset 0 -3px 0 #8b5a2b}
 
 .ln{position:relative;background:var(--paper)}
@@ -104,13 +104,13 @@ html.phone .dock button{padding:8px 9px;font-size:13px}
 html.phone .jumpbox input,html.phone .jumpbox select{width:64px}
 html.phone h1{font-size:16px}
 html.phone #btnIndex{background:#5a3a1e;color:#f3e9d2;border-color:#5a3a1e;font-weight:700;padding:8px 10px;border-radius:12px;flex:0 0 auto}
-html.phone #ver{grid-column:1/-1;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85}
+html.phone #ver{grid-column:1/-1;text-align:center;font-size:10px;color:#7a6247;line-height:1.2;opacity:1;display:block!important;padding:2px 0 4px}
 html.phone #modeHide,html.phone #modeHint{display:none!important}html.phone .toolbar #modeShow{display:none!important}html.phone .dock #modeShow{display:inline-flex!important}
 html.phone .installbar p{font-size:11px}
 /* iOS Safari: use dynamic viewport so browser chrome doesn't invent gaps */
 html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill-available}html.phone body{padding-bottom:max(8px,env(safe-area-inset-bottom,0px))!important}
 
-@media (max-width:900px){.sub{display:none}aside{display:none!important}.installbar p{font-size:11px}.layout{display:flex;flex-direction:column;flex:1;min-height:0}main{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}main.stack-center{justify-content:center}.stack{flex:0 0 auto;display:flex;flex-direction:column;width:100%;min-height:0}.toolbar{padding:4px 6px;gap:6px;align-items:center;flex:0 0 auto}.meta{padding:0 8px;flex:0 0 auto}.title{font-size:15px;margin:0}.who{font-size:11px;margin:0}.heard{display:none!important;margin:0;padding:0;min-height:0;height:0;overflow:hidden}.stage{flex:0 0 auto!important;flex-grow:0!important;overflow:visible;padding:0;min-height:0!important;height:auto!important;display:block!important}.stage.vcenter{justify-content:unset}.sheet{flex:0 0 auto!important;flex-grow:0!important;height:auto!important;min-height:0!important;padding:0;border-radius:10px;border-left:none;border-right:none;margin:0;width:100%}.dock{position:relative!important;bottom:auto;gap:6px;padding:4px 8px;padding-bottom:4px;flex:0 0 auto;border-top:1px solid var(--line)}.dock button{padding:8px 9px;font-size:13px}.jumpbox input,.jumpbox select{width:64px}h1{font-size:16px}header{display:none!important}#btnIndex{background:#5a3a1e;color:#f3e9d2;border-color:#5a3a1e;font-weight:700;padding:8px 10px;border-radius:12px;flex:0 0 auto}#ver{grid-column:1/-1;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85}#modeHide,#modeHint{display:none!important}.toolbar #modeShow{display:none!important}.dock #modeShow{display:inline-flex!important}}
+@media (max-width:900px){.sub{display:none}aside{display:none!important}.installbar p{font-size:11px}.layout{display:flex;flex-direction:column;flex:1;min-height:0}main{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}main.stack-center{justify-content:center}.stack{flex:0 0 auto;display:flex;flex-direction:column;width:100%;min-height:0}.toolbar{padding:4px 6px;gap:6px;align-items:center;flex:0 0 auto}.meta{padding:0 8px;flex:0 0 auto}.title{font-size:15px;margin:0}.who{font-size:11px;margin:0}.heard{display:none!important;margin:0;padding:0;min-height:0;height:0;overflow:hidden}.stage{flex:0 0 auto!important;flex-grow:0!important;overflow:visible;padding:0;min-height:0!important;height:auto!important;display:block!important}.stage.vcenter{justify-content:unset}.sheet{flex:0 0 auto!important;flex-grow:0!important;height:auto!important;min-height:0!important;padding:0;border-radius:10px;border-left:none;border-right:none;margin:0;width:100%}.dock{position:relative!important;bottom:auto;gap:6px;padding:4px 8px;padding-bottom:4px;flex:0 0 auto;border-top:1px solid var(--line)}.dock button{padding:8px 9px;font-size:13px}.jumpbox input,.jumpbox select{width:64px}h1{font-size:16px}header{display:none!important}#btnIndex{background:#5a3a1e;color:#f3e9d2;border-color:#5a3a1e;font-weight:700;padding:8px 10px;border-radius:12px;flex:0 0 auto}#ver{grid-column:1/-1;text-align:center;font-size:10px;color:#7a6247;line-height:1.2;opacity:1;display:block!important;padding:2px 0 4px}#modeHide,#modeHint{display:none!important}.toolbar #modeShow{display:none!important}.dock #modeShow{display:inline-flex!important}}
 </style>
 </head>
 <body>
@@ -201,7 +201,10 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   w.style.display="";
   w.classList.remove("on");
   function syncHadithToggle(){
-    var show = (typeof mode==="string" ? mode : "hide") === "show";
+    var curMode = (typeof window.__tarteelGetMode==="function")
+      ? window.__tarteelGetMode()
+      : (typeof mode==="string" ? mode : "hide");
+    var show = curMode === "show";
     w.textContent = show ? "إخفاء الحديث" : "إظهار الحديث";
     w.setAttribute("aria-pressed", show ? "true" : "false");
     w.classList.toggle("on", show);
@@ -210,12 +213,12 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   w.addEventListener("click", function(ev){
     ev.preventDefault();
     ev.stopImmediatePropagation();
-    var show = (typeof mode==="string" ? mode : "hide") === "show";
-    if(typeof setMode==="function") setMode(show ? "hide" : "show");
-    else {
-      /* fallback before setMode exists */
-      mode = show ? "hide" : "show";
-    }
+    var curMode = (typeof window.__tarteelGetMode==="function")
+      ? window.__tarteelGetMode()
+      : (typeof mode==="string" ? mode : "hide");
+    var next = curMode === "show" ? "hide" : "show";
+    if (typeof window.setMode === "function") window.setMode(next);
+    else if (typeof setMode === "function") setMode(next);
     syncHadithToggle();
   }, true);
   /* Keep order: Start/Stop, then Show/Hide, then prog/cnt/ASR/ver */
@@ -231,7 +234,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     ".dock>.prog{grid-column:1;align-self:center}",
     ".dock>#cnt{grid-column:2;text-align:center}",
     ".dock>#btnASR{grid-column:1/-1}",
-    ".dock>#ver{grid-column:1/-1;text-align:center}"
+    ".dock>#ver{grid-column:1/-1;text-align:center;display:block!important;font-size:10px;color:#7a6247;opacity:1;padding:2px 0 4px}"
   ].join("");
   document.head.appendChild(st);
   /* Keep toggle label in sync if setMode is called elsewhere */
@@ -1196,10 +1199,8 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
       if (cur !== stuckAt) { stuckAt = cur; stuckSince = Date.now(); return; }
       if (cur >= words.length - 1 || Date.now() - stuckSince < 4000) return;
       stuckSince = Date.now();
-      var el = BOX[cur + 1]; if (!el || !el.style) return;
-      el.style.outline = "2px dashed #b8860b"; el.style.outlineOffset = "1px";
+      /* dashed next-word caret removed — keep current-word .bx.now highlight only */
       $("heard").textContent = "كرر الكلمة — " + $("heard").textContent.replace(/^كرر الكلمة — /, "");
-      setTimeout(function () { el.style.outline = ""; el.style.outlineOffset = ""; }, 1200);
     }, 500);
   }
   function watchdog() {                    // session open but silent for long (iOS stall) -> fresh session
@@ -1452,7 +1453,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   function cldInit() {
     if (typeof document === "undefined" || !document.createElement || $("btnCloud")) return;
     var mic = $("btnMic"); if (!mic || !mic.parentNode) return;
-    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.textContent = "tarteel-fill232"; ver.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85;padding-bottom:2px"; dk.appendChild(ver); }
+    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.textContent = "tarteel-fill233"; ver.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85;padding-bottom:2px"; dk.appendChild(ver); }
     var dk2 = document.querySelector(".dock");
     var b = document.createElement("button"); b.type = "button"; b.id = "btnCloud";
     b.style.cssText = "grid-column:1/-1;width:100%;padding:7px 10px;font-size:13px;border-radius:12px;border:1px solid var(--line);background:#e8d9b9;color:var(--ink);cursor:pointer";
@@ -1801,7 +1802,15 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     $('iosHelp').classList.add('show');
   }
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
-    navigator.serviceWorker.register('./sw.js').catch(function(){});
+    var __swReloading = false;
+    navigator.serviceWorker.register('./sw.js').then(function (reg) {
+      try { if (reg && reg.update) reg.update(); } catch (e) {}
+    }).catch(function(){});
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (__swReloading) return;
+      __swReloading = true;
+      window.location.reload();
+    });
   }
   if (navigator.wakeLock) {
     document.addEventListener('visibilitychange', function(){
@@ -1810,6 +1819,12 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
       }
     });
   }
+
+  
+  /* expose mode API for dock Show/Hide toggle (dock IIFE runs earlier, outside this closure) */
+  window.setMode = setMode;
+  window.__tarteelGetMode = function () { return mode; };
+  window.__tarteelSetCur = setCur;
 
   fillJump();
   go(0);
