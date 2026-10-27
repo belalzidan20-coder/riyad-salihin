@@ -82,7 +82,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
 .ln img{display:block;width:100%;height:100%;mix-blend-mode:multiply}
 .zrow{display:flex;flex-direction:row;justify-content:flex-start;align-items:flex-start;width:100%}.ln.zc{flex:none;overflow:hidden;margin:0;max-width:none;width:auto}.ln.zc img{position:absolute;top:0;max-width:none}
 .sheet{box-shadow:0 2px 14px rgba(90,58,30,.15)}
-@media (max-width:700px){.sub{display:none#modeHide,#modeHint,#modeShow{display:none!important}.meta{padding:4px 10px 0}.title{font-size:16px}.who{font-size:12px}}aside{max-height:120px}.installbar p{font-size:11px}.title{font-size:17px}.sheet{padding:8px 2px;border-radius:14px}.stage{padding:2px 4px 4px}.dock{gap:6px;padding:8px;padding-bottom:max(24px,calc(env(safe-area-inset-bottom,0px) + 20px))}.dock button{padding:8px 9px;font-size:13px}.jumpbox input,.jumpbox select{width:64px}h1{font-size:16px}header{display:none!important}.toolbar{padding:6px 8px 0;gap:6px}#btnIndex{background:#5a3a1e;color:#f3e9d2;border-color:#5a3a1e;font-weight:700;padding:8px 10px;border-radius:12px;flex:0 0 auto}#ver{grid-column:1/-1;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85}}
+@media (max-width:700px){.sub{display:none}aside{display:none!important}.installbar p{font-size:11px}.layout{display:flex;flex-direction:column;flex:1;min-height:0}main{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start}main.stack-center{justify-content:center}.toolbar{padding:4px 6px;gap:6px;align-items:center;flex-shrink:0}.meta{padding:0 8px;flex-shrink:0}.title{font-size:15px;margin:0}.who{font-size:11px;margin:0}.heard{display:none!important;margin:0;padding:0;min-height:0}.stage{flex:0 1 auto;overflow:visible;padding:0;min-height:0;display:block}.stage.vcenter{justify-content:unset}.sheet{padding:0;border-radius:10px;border-left:none;border-right:none;margin:0}.dock{position:relative;bottom:auto;gap:6px;padding:4px 8px;padding-bottom:max(20px,calc(env(safe-area-inset-bottom,0px) + 16px));flex-shrink:0;border-top:1px solid var(--line)}.dock button{padding:8px 9px;font-size:13px}.jumpbox input,.jumpbox select{width:64px}h1{font-size:16px}header{display:none!important}#btnIndex{background:#5a3a1e;color:#f3e9d2;border-color:#5a3a1e;font-weight:700;padding:8px 10px;border-radius:12px;flex:0 0 auto}#ver{grid-column:1/-1;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85}#modeHide,#modeHint,#modeShow{display:none!important}}
 </style>
 </head>
 <body>
@@ -161,6 +161,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   function $(id) { return document.getElementById(id); }
   function tokenize(s) { return String(s || "").trim().split(/\s+/).filter(Boolean); }
             /*MATCHER*/
+  // Matcher library (kept in sync with /*MATCHER*/ block in site HTML)
   var HAR = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g;
   function norm(s) {
     s = String(s || "");
@@ -263,6 +264,110 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     return d <= 1 && Math.abs(piece.length - e.length) <= 1;
   }
   var SAW_PARTS = {"صلي":1,"صلى":1,"الله":1,"عليه":1,"وسلم":1,"سلم":1,"صلا":1,"صل":1,"واله":1,"وعلي":1,"اله":1,"و":1,"السلام":1,"والسلام":1,"عليهوسلم":1,"صلاللهعليهوسلم":1,"صلياللهعليهوسلم":1};
+
+  /* Phrase equivalences (order-preserving, no skip): Rasul/Nabi, Radiya-anh*, Qala/thumma-qala */
+  var RADIYA_TAIL = { "عنه": 1, "عنهما": 1, "عنهم": 1, "عنها": 1 };
+  function wordEq(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    if (core(a) === core(b)) return true;
+    if (fuzzyOk(a, b)) return true;
+    return false;
+  }
+  function isRasulStem(w) {
+    var c = core(w || "");
+    return c === "رسول" || c === "رسولا";
+  }
+  function isNabiStem(w) {
+    var c = core(w || "");
+    return c === "نبي" || c === "نبيا";
+  }
+  function isAllahWord(w) {
+    w = String(w || "");
+    /* do NOT run core() — it strips ال from الله → له */
+    if (w === "الله" || w === "للّه") return true;
+    if (/^[وفبكل]الله$/.test(w)) return true;
+    if (/^(?:وال|فال|بال|كال|لل)الله$/.test(w)) return true;
+    return false;
+  }
+  function isMessengerOne(w) {
+    /* النبي / الرسول as a single-word stand-in for رسول الله / نبي الله */
+    var c = core(w || "");
+    return c === "نبي" || c === "رسول";
+  }
+  function isQalaStem(w) {
+    var c = core(w || "");
+    return c === "قال" || c === "فقال" || c === "وقال";
+  }
+  /* Match book window starting at p against heard tok[/nxt[/nxt2]].
+     Returns { hit, n } where hit is last book index consumed and n is heard tokens used, or null. */
+  function phraseMatch(norms, p, tok, nxt, nxt2) {
+    if (!tok || p >= norms.length) return null;
+    function at(i) {
+      var q = i;
+      while (q < norms.length && !norms[q]) q++;
+      return q < norms.length ? q : -1;
+    }
+    var p0 = at(p); if (p0 < 0) return null;
+    var e0 = norms[p0];
+    if (e0 === "SAW") return null;
+    var p1 = at(p0 + 1);
+    var e1 = p1 >= 0 ? norms[p1] : "";
+    var p2 = at((p1 >= 0 ? p1 : p0) + 1);
+    var e2 = p2 >= 0 ? norms[p2] : "";
+
+    /* --- رسول الله / نبي الله / النبي / الرسول --- */
+    var bookRasul2 = isRasulStem(e0) && e1 && isAllahWord(e1);
+    var bookNabi2 = isNabiStem(e0) && e1 && isAllahWord(e1);
+    var bookMsg1 = isMessengerOne(e0) && !(e1 && isAllahWord(e1)); /* lone النبي/الرسول (not already part of X الله) */
+    /* If book is رسول/نبي followed by الله, treat as 2-word form; if book is النبي alone, 1-word */
+    if (bookRasul2 || bookNabi2 || bookMsg1) {
+      var heardRasul2 = isRasulStem(tok) && nxt && isAllahWord(nxt);
+      var heardNabi2 = isNabiStem(tok) && nxt && isAllahWord(nxt);
+      var heardMsg1 = isMessengerOne(tok) && !(nxt && isAllahWord(nxt));
+      if (heardRasul2 || heardNabi2 || heardMsg1) {
+        /* same class → accept; advance over book's span; consume heard span */
+        var bookHit = (bookRasul2 || bookNabi2) ? p1 : p0;
+        var heardN = (heardRasul2 || heardNabi2) ? 2 : 1;
+        return { hit: bookHit, n: heardN };
+      }
+    }
+
+    /* --- رضي الله عنه/عنهما/عنهم/عنها --- */
+    if (core(e0) === "رضي" && e1 && isAllahWord(e1) && e2 && RADIYA_TAIL[core(e2)]) {
+      var h1 = nxt, h2 = nxt2;
+      if (core(tok) === "رضي" && h1 && isAllahWord(h1) && h2 && RADIYA_TAIL[core(h2)]) {
+        return { hit: p2, n: 3 };
+      }
+    }
+    /* also: already past رضي الله, only the tail word differs */
+    if (RADIYA_TAIL[core(e0)] && p0 >= 2) {
+      var a = norms[p0 - 1], b = norms[p0 - 2];
+      /* walk back over empties */
+      var j = p0 - 1; while (j >= 0 && !norms[j]) j--;
+      var prev1 = j >= 0 ? norms[j] : "";
+      var j2 = j - 1; while (j2 >= 0 && !norms[j2]) j2--;
+      var prev2 = j2 >= 0 ? norms[j2] : "";
+      if (isAllahWord(prev1) && core(prev2) === "رضي" && RADIYA_TAIL[core(tok)]) {
+        return { hit: p0, n: 1 };
+      }
+    }
+
+    /* --- قال / فقال / وقال / ثم قال --- */
+    var bookQala1 = isQalaStem(e0) && core(e0) !== "ثم";
+    var bookThummaQala = core(e0) === "ثم" && e1 && isQalaStem(e1);
+    if (bookQala1 || bookThummaQala) {
+      var heardQala1 = isQalaStem(tok) && core(tok) !== "ثم";
+      var heardThummaQala = core(tok) === "ثم" && nxt && isQalaStem(nxt);
+      if (heardQala1 || heardThummaQala) {
+        var bHit = bookThummaQala ? p1 : p0;
+        var hN = heardThummaQala ? 2 : 1;
+        return { hit: bHit, n: hN };
+      }
+    }
+    return null;
+  }
+
   var LOOK = 3; // lookahead window for ASR merge/split resync only (never skip book words)
   function makeMatcher(norms) {
     var st = { pos: 0, saw: false };
@@ -307,7 +412,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       return -1;
     }
     // tok, nxt normalized; returns {hit: matched word index or -1, n: heard tokens used (1 or 2)}
-    st.feed = function (tok, nxt) {
+    st.feed = function (tok, nxt, nxt2) {
       var R = { hit: -1, n: 1 }, q;
       if (!tok) return R;
       skip();
@@ -318,6 +423,9 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
         if (tok === "SAW" || SAW_PARTS[tok]) { st.pos = p + 1; st.saw = true; R.hit = p; }
         return R;
       }
+      // phrase equivalences (Rasul/Nabi, Radiya-anh*, Qala) — sequential, no skip
+      var pe = phraseMatch(norms, p, tok, nxt, nxt2 || "");
+      if (pe) { st.pos = pe.hit + 1; R.hit = pe.hit; R.n = pe.n; return R; }
       // merged ASR token covering current + next (+optional third) expected words — sequential, no skip
       if ((q = merged(tok, p)) >= 0) { st.pos = q + 1; R.hit = q; return R; }
       // direct fuzzy match on the expected next word only
@@ -346,7 +454,8 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     st.reset = function (pos) { if (st.pos !== pos) { st.pos = pos; st.saw = false; } };
     return st;
   }
-  /*MATCHER*/
+
+/*MATCHER*/
   function resetSpeech() { processedFinals = 0; lastInterim = ""; lastSpoken = ""; }
 
   var TOPEN = {}; /* TREEIDX: sidebar index كتاب → باب → حديث */
@@ -467,9 +576,17 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   }
   function syncStageCenter() {
     var st = document.querySelector(".stage"), sheet = st && st.querySelector(".sheet");
-    if (!st || !sheet) return;
-    var sh = Math.max(sheet.offsetHeight, sheet.scrollHeight);
-    st.classList.toggle("vcenter", sh <= st.clientHeight + 1);
+    var main = document.querySelector("main");
+    if (st && sheet) {
+      var sh = Math.max(sheet.offsetHeight, sheet.scrollHeight);
+      st.classList.toggle("vcenter", sh <= st.clientHeight + 1);
+    }
+    /* Phone: keep [toolbar + hadith + dock] tight and vertically centered when the stack fits */
+    if (main) {
+      main.classList.remove("stack-center");
+      var fits = main.scrollHeight <= main.clientHeight + 2;
+      main.classList.toggle("stack-center", fits);
+    }
   }
   var _buildGen = 0;
   function build() {
@@ -491,41 +608,30 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     }
     box.textContent = "";
     if (L && L.length && isPhoneLayout()) {
-      /* phone: enlarge line crops to fill width, then grow to fill free stage height; overlays share the same sc */
-      var refW = 0; for (var k = 0; k < L.length; k++) refW = Math.max(refW, L[k].w);
-      var cs = getComputedStyle(box), avail = Math.max(120, ZW - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 2);
-      var sc = fitScale(L, avail, stageAvailH()), PAD = 7, pcs = [];
+      /* phone: each book line stays ONE row (same line count as print); scale uniformly to full width */
+      var avail = Math.max(120, ZW - 2);
       for (var k = 0; k < L.length; k++) {
-        var ln = L[k], B = ln.b; if (!B.length) continue;
-        for (var j = 0; j < B.length; j++) {
-          var R = j === 0 ? (k === 0 ? ln.w : Math.min(ln.w, B[j][1], ln.e ? ln.e[1] + PAD : ln.w)) : (ln.k ? ln.k[j - 1] : (B[j - 1][0] + B[j][1]) / 2);
-          var Lx = j === B.length - 1 ? Math.max(0, B[j][0], ln.e ? ln.e[0] - PAD : 0) : (ln.k ? ln.k[j] : (B[j][0] + B[j + 1][1]) / 2);
-          pcs.push({ k: k, j: j, x0: Lx, x1: R, w: (R - Lx) * sc });
+        var ln = L[k], d = document.createElement("div");
+        d.className = "ln";
+        d.style.width = "100%";
+        d.style.maxWidth = "none";
+        d.style.margin = "0";
+        d.style.aspectRatio = ln.w + "/" + ln.h;
+        var im = document.createElement("img"); im.alt = ""; im.decoding = "async";
+        if (ln.src1) { im.sizes = "100vw"; im.srcset = srcsetOf(ln); }
+        im.src = ln.src; d.appendChild(im);
+        for (var j = 0; j < ln.b.length; j++) {
+          var bx = ln.b[j], sp = document.createElement("span");
+          sp.setAttribute("data-w", bx[2]);
+          sp.style.left = (bx[0] / ln.w * 100) + "%"; sp.style.width = ((bx[1] - bx[0]) / ln.w * 100) + "%";
+          sp._a = bx[2]; sp._b = bx[3]; sp._p = "bx"; sp.className = clsFor(bx[2], bx[3], "bx");
+          for (var w = bx[2]; w <= bx[3]; w++) BOX[w] = sp;
+          SPANS.push(sp); d.appendChild(sp);
         }
-      }
-      var row = null, rowW = 0, cur0 = null;
-      for (var t = 0; t < pcs.length; t++) {
-        var pc = pcs[t], ln = L[pc.k];
-        if (!row || rowW + pc.w > avail + 0.5) { row = document.createElement("div"); row.className = "zrow"; frag.appendChild(row); rowW = 0; cur0 = null; }
-        if (!cur0 || cur0.k !== pc.k) {
-          cur0 = { k: pc.k, x0: pc.x0, x1: pc.x1, el: document.createElement("div"), sp: [] };
-          cur0.el.className = "ln zc"; row.appendChild(cur0.el);
-          var im = document.createElement("img"); im.alt = ""; im.decoding = "async";
-          if (ln.src1) { im.sizes = "(max-width:900px) 200vw, 900px"; im.srcset = srcsetOf(ln); }
-          im.src = ln.src; cur0.el.appendChild(im); cur0.im = im;
-        }
-        cur0.x0 = pc.x0; rowW += pc.w;
-        var bx = ln.b[pc.j], sp = document.createElement("span");
-        sp.setAttribute("data-w", bx[2]); sp._x0 = bx[0]; sp._x1 = bx[1];
-        sp._a = bx[2]; sp._b = bx[3]; sp._p = "bx"; sp.className = clsFor(bx[2], bx[3], "bx");
-        for (var w = bx[2]; w <= bx[3]; w++) BOX[w] = sp;
-        SPANS.push(sp); cur0.el.appendChild(sp); cur0.sp.push(sp);
-        var c = cur0, cw = c.x1 - c.x0;
-        c.el.style.width = (cw * sc) + "px"; c.el.style.height = (ln.h * sc) + "px";
-        c.im.style.width = (ln.w * sc) + "px"; c.im.style.height = (ln.h * sc) + "px"; c.im.style.left = (-c.x0 * sc) + "px";
-        for (var q = 0; q < c.sp.length; q++) { c.sp[q].style.left = ((c.sp[q]._x0 - c.x0) * sc) + "px"; c.sp[q].style.width = ((c.sp[q]._x1 - c.sp[q]._x0) * sc) + "px"; }
+        frag.appendChild(d);
       }
     } else if (L && L.length) {
+
       for (var k = 0; k < L.length; k++) {
         var ln = L[k], d = document.createElement("div");
         d.className = "ln"; d.style.aspectRatio = ln.w + "/" + ln.h;
@@ -695,7 +801,8 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     for (var i = st0 + 1; i < raw.length; i++) {
       var n = norm(raw[i]); if (!n) continue;
       var nx = i + 1 < raw.length ? norm(raw[i + 1]) : "";
-      var r = matcher.feed(n, nx);
+      var nx2 = i + 2 < raw.length ? norm(raw[i + 2]) : "";
+      var r = matcher.feed(n, nx, nx2);
       if (r.hit >= 0) {
         C.lastHit = i + r.n - 1; i += r.n - 1; if (r.hit > last) last = r.hit;
         C.tok = norm(raw[C.lastHit]); C.occ = 0;
@@ -1227,7 +1334,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   function cldInit() {
     if (typeof document === "undefined" || !document.createElement || $("btnCloud")) return;
     var mic = $("btnMic"); if (!mic || !mic.parentNode) return;
-    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.textContent = "tarteel-fill228"; ver.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85;padding-bottom:2px"; dk.appendChild(ver); }
+    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.textContent = "tarteel-fill229"; ver.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85;padding-bottom:2px"; dk.appendChild(ver); }
     var dk2 = document.querySelector(".dock");
     var b = document.createElement("button"); b.type = "button"; b.id = "btnCloud";
     b.style.cssText = "grid-column:1/-1;width:100%;padding:7px 10px;font-size:13px;border-radius:12px;border:1px solid var(--line);background:#e8d9b9;color:var(--ink);cursor:pointer";
