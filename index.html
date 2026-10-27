@@ -1015,6 +1015,188 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     b.style.display = "none"; var ab = $("btnASR"); if (ab) ab.style.display = "none";
     // phones: hide the collapsed side list (empty beige strip above السابق/التالي; the jump box already navigates)
     var st = document.createElement("style"); st.textContent = "@media (max-width:700px){aside{display:none}}"; document.head.appendChild(st);
+
+    // pt217u dropdown index: button + panel (phones too) with diacritic-insensitive search
+    (function () {
+      if (document.getElementById("btnIndex")) return;
+      var st = document.createElement("style");
+      st.textContent = [
+        "#btnIndex{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:#e8d9b9;color:var(--ink);font:inherit;cursor:pointer;white-space:nowrap}",
+        "#btnIndex .ic{font-size:18px;line-height:1}",
+        "#idxOverlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(60,40,20,.35)}",
+        "#idxOverlay.on{display:block}",
+        "#idxPanel{position:absolute;top:0;right:0;bottom:0;width:min(100%,380px);background:#f3e9d2;border-left:1px solid #d2bb8f;box-shadow:-8px 0 28px rgba(0,0,0,.18);display:flex;flex-direction:column;padding:12px;box-sizing:border-box}",
+        "#idxPanel .idxHead{display:flex;align-items:center;gap:8px;margin-bottom:10px}",
+        "#idxPanel .idxHead h3{margin:0;flex:1;font-size:17px;color:#5a3a1e}",
+        "#idxClose{border:0;background:#e8d9b9;border-radius:10px;padding:8px 12px;font:inherit;cursor:pointer;color:var(--ink)}",
+        "#idxQ{width:100%;margin-bottom:10px;background:#e8d9b9;color:var(--ink);border:0;border-radius:10px;padding:10px 12px;font:inherit;box-sizing:border-box}",
+        "#idxSide{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}",
+        "#idxSide .miss{padding:14px;background:#ede0c4;border-radius:12px;color:#7a6247;text-align:center;line-height:1.7}",
+        "#idxSide .hit{display:block;width:100%;text-align:right;margin:0 0 8px;padding:11px;border:0;border-radius:14px;background:#ede0c4;color:inherit;font:inherit;cursor:pointer}",
+        "#idxSide .hit strong{display:block}",
+        "#idxSide .hit small{display:block;color:var(--muted);margin-top:4px;line-height:1.5}",
+        "@media (min-width:701px){#btnIndex{display:inline-flex}}"
+      ].join("");
+      document.head.appendChild(st);
+
+      var btn = document.createElement("button");
+      btn.type = "button"; btn.id = "btnIndex";
+      btn.innerHTML = '<span class="ic" aria-hidden="true">☰</span><span>الفهرس</span>';
+      var hdr = document.querySelector("header > div:last-child") || document.querySelector("header");
+      if (hdr) hdr.insertBefore(btn, hdr.firstChild);
+
+      var ov = document.createElement("div"); ov.id = "idxOverlay";
+      ov.innerHTML = '<div id="idxPanel" role="dialog" aria-label="الفهرس"><div class="idxHead"><h3>الفهرس</h3><button type="button" id="idxClose" aria-label="إغلاق">إغلاق</button></div><input id="idxQ" type="search" placeholder="رقم حديث أو كلمة…" inputmode="search" autocomplete="off"><div id="idxSide"></div></div>';
+      document.body.appendChild(ov);
+
+      function ar2lat(s) {
+        return String(s || "").replace(/[٠-٩]/g, function (d) { return "٠١٢٣٤٥٦٧٨٩".indexOf(d); });
+      }
+      function stripTashkeel(s) {
+        return String(s || "").replace(/[\u064B-\u0652\u0670\u0640]/g, "");
+      }
+      function closeIdx() { ov.classList.remove("on"); }
+      function openIdx() {
+        ov.classList.add("on");
+        var iq = document.getElementById("idxQ");
+        if (iq) { iq.value = ($("q") && $("q").value) || ""; setTimeout(function () { iq.focus(); }, 50); }
+        paintIdx();
+      }
+      function paintIdx() {
+        var qRaw = (document.getElementById("idxQ").value || "").trim();
+        var qLat = ar2lat(qRaw).trim();
+        var qFold = stripTashkeel(qLat).toLowerCase();
+        var sd = document.getElementById("idxSide");
+        var cur = DATA[idx] || {};
+        var html = "", lastB = null, lastC = null, any = false;
+        function esc(t) { return String(t || "").replace(/&/g,"&amp;").replace(/"/g, "&quot;").replace(/</g,"&lt;"); }
+        // pure number → jump target or missing note
+        if (/^\d+$/.test(qLat)) {
+          var num = parseInt(qLat, 10);
+          var found = -1;
+          for (var i = 0; i < DATA.length; i++) if (DATA[i].n === num) { found = i; break; }
+          if (found >= 0) {
+            var h = DATA[found];
+            html = '<button type="button" class="hit" data-go="' + found + '"><strong>' + h.n + ". " + esc(h.title) + "</strong><small>" + esc(h.who) + "</small></button>";
+            sd.innerHTML = html;
+          } else if (num >= 1 && num <= 1955) {
+            sd.innerHTML = '<div class="miss">الحديث ' + num + " لم يُضَف بعد</div>";
+          } else {
+            sd.innerHTML = '<div class="miss">لا نتائج</div>';
+          }
+          return;
+        }
+        // word / mixed search (ignore diacritics); also keep tree when empty
+        for (var i = 0; i < DATA.length; i++) {
+          var h = DATA[i], bk = h.bk || "", ch = h.ch || "";
+          if (qFold) {
+            var hay = stripTashkeel(h.n + " " + h.title + " " + h.who + " " + h.text + " " + ch + " " + bk).toLowerCase();
+            if (hay.indexOf(qFold) === -1) continue;
+            // flat hit with snippet when searching words
+            any = true;
+            var plain = stripTashkeel(h.text);
+            var pos = plain.toLowerCase().indexOf(qFold);
+            var sn = pos >= 0 ? plain.slice(Math.max(0, pos - 18), pos + qFold.length + 28) : plain.slice(0, 48);
+            if (pos > 18) sn = "…" + sn;
+            if (pos + qFold.length + 28 < plain.length) sn = sn + "…";
+            html += '<button type="button" class="hit" data-go="' + i + '"><strong>' + h.n + ". " + esc(h.title) + "</strong><small>" + esc(sn) + "</small></button>";
+            continue;
+          }
+          any = true;
+          if (bk !== lastB) {
+            if (lastC !== null) html += "</details>"; if (lastB !== null) html += "</details>";
+            var kb = "b|" + bk, ob = TOPEN[kb] || bk === cur.bk;
+            html += '<details class="tbk" data-k="' + esc(kb) + '"' + (ob ? " open" : "") + '><summary>' + esc(bk) + "</summary>";
+            lastB = bk; lastC = null;
+          }
+          if (ch !== lastC) {
+            if (lastC !== null) html += "</details>";
+            var kc = "c|" + bk + "|" + ch, oc = TOPEN[kc] || (bk === cur.bk && ch === cur.ch);
+            html += '<details class="tch" data-k="' + esc(kc) + '"' + (oc ? " open" : "") + '><summary>' + esc(ch) + "</summary>";
+            lastC = ch;
+          }
+          html += '<button type="button" class="hitem' + (i === idx ? " active" : "") + '" data-go="' + i + '">';
+          html += "<strong>" + h.n + ". " + esc(h.title) + "</strong>";
+          html += "<small>" + esc(h.who) + "</small>";
+          html += '<div class="barmini"><i style="width:' + Math.round((best[i] || 0) * 100) + '%"></i></div></button>';
+        }
+        if (!qFold) {
+          if (lastC !== null) html += "</details>"; if (lastB !== null) html += "</details>";
+        }
+        sd.innerHTML = any ? html : "<div class='chap'>لا نتائج</div>";
+        if (!qFold) sd.querySelectorAll("details").forEach(function (d) {
+          d.addEventListener("toggle", function () { TOPEN[d.getAttribute("data-k")] = d.open; });
+        });
+      }
+      btn.addEventListener("click", function (e) { e.preventDefault(); openIdx(); });
+      document.getElementById("idxClose").addEventListener("click", closeIdx);
+      ov.addEventListener("click", function (e) { if (e.target === ov) closeIdx(); });
+      document.getElementById("idxQ").addEventListener("input", paintIdx);
+      document.getElementById("idxQ").addEventListener("keydown", function (e) {
+        if (e.key !== "Enter") return;
+        var qLat = ar2lat(this.value || "").trim();
+        if (!/^\d+$/.test(qLat)) return;
+        var num = parseInt(qLat, 10);
+        for (var i = 0; i < DATA.length; i++) if (DATA[i].n === num) { closeIdx(); go(i); return; }
+      });
+      document.getElementById("idxSide").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-go]");
+        if (!b) return;
+        e.preventDefault();
+        closeIdx();
+        go(Number(b.getAttribute("data-go")));
+      });
+      // also improve the original aside search (wide screens)
+      var qEl = $("q");
+      if (qEl && !qEl._idxFold) {
+        qEl._idxFold = true;
+        var _rs = renderSide;
+        renderSide = function () {
+          var qRaw = (qEl.value || "").trim();
+          var qLat = ar2lat(qRaw).trim();
+          if (/^\d+$/.test(qLat)) {
+            var num = parseInt(qLat, 10), found = -1;
+            for (var i = 0; i < DATA.length; i++) if (DATA[i].n === num) { found = i; break; }
+            var sd = $("side");
+            if (found >= 0) {
+              qEl.value = "";
+              // show tree normally then highlight — fall through empty q after go? just call go
+              _rs();
+              go(found);
+              return;
+            }
+            if (num >= 1 && num <= 1955) {
+              sd.innerHTML = '<div class="miss" style="padding:14px;background:#ede0c4;border-radius:12px;color:#7a6247;text-align:center">الحديث ' + num + " لم يُضَف بعد</div>";
+              return;
+            }
+          }
+          // diacritic-insensitive filter via temp override of value matching inside _rs is hard;
+          // reimplement lightly: set a folded flag on query by writing stripped into a data attr
+          if (qRaw && !/^\d+$/.test(qLat)) {
+            var qFold = stripTashkeel(qLat).toLowerCase();
+            var html = "", any = false;
+            function esc(t) { return String(t || "").replace(/"/g, "&quot;"); }
+            for (var i = 0; i < DATA.length; i++) {
+              var h = DATA[i];
+              var hay = stripTashkeel(h.n + " " + h.title + " " + h.who + " " + h.text + " " + (h.ch||"") + " " + (h.bk||"")).toLowerCase();
+              if (hay.indexOf(qFold) === -1) continue;
+              any = true;
+              var plain = stripTashkeel(h.text);
+              var pos = plain.toLowerCase().indexOf(qFold);
+              var sn = pos >= 0 ? plain.slice(Math.max(0, pos - 18), pos + qFold.length + 28) : plain.slice(0, 48);
+              if (pos > 18) sn = "…" + sn;
+              html += '<button type="button" class="hitem' + (i === idx ? " active" : "") + '" data-go="' + i + '"><strong>' + h.n + ". " + h.title + "</strong><small>" + sn + "</small></button>";
+            }
+            $("side").innerHTML = any ? html : "<div class='chap'>لا نتائج</div>";
+            return;
+          }
+          _rs();
+        };
+        qEl.removeEventListener("input", _rs);
+        qEl.addEventListener("input", renderSide);
+      }
+    })();
+
     // finished hadith: drop the current-word highlight on the last word (its box runs to the line end)
     var paint0 = paint; paint = function () { paint0(); var L = BOX[words.length - 1]; if (cur === words.length - 1 && L && L.classList) L.classList.remove("now"); };
   }
