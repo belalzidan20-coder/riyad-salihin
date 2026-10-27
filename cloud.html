@@ -864,9 +864,14 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   var CLOUD_URL = "wss://riyad-tarteel-asr.riyad-tarteel.workers.dev/listen";   // set after deploying the Worker
   var CLOUD_KT = false;                                                    // keyterm boosting (measured slightly worse on test audio)
   var CLD = { on: false, ws: null, ctx: null, stream: null, node: null, seg: 0, fails: 0, lastFrame: 0, kaT: null };
-  function cldSaved() { try { return localStorage.getItem("cloudOn") === "1"; } catch (e) { return false; } }
+  function cldSaved() { try { var v = localStorage.getItem("cloudOn"); return v === null ? true : v === "1"; } catch (e) { return true; } }
   function cldSave(v) { try { localStorage.setItem("cloudOn", v ? "1" : "0"); } catch (e) {} }
-  function cldBtn() { var b = $("btnCloud"); if (b) { b.textContent = CLD.on ? "سماع سحابي ✓" : "سماع سحابي"; b.className = CLD.on ? "livebtn" : ""; } }
+  function cldBtn() {
+    var b = $("btnCloud"); if (!b) return;
+    b.textContent = CLD.on ? "التسميع: سحابي" : "التسميع: الجهاز";
+    b.setAttribute("aria-pressed", CLD.on ? "true" : "false");
+    b.title = CLD.on ? "اضغط للتبديل إلى تعرّف الجهاز (مجاني)" : "اضغط للتبديل إلى السماع السحابي";
+  }
   function cldTerms() {
     if (!CLOUD_KT) return "";
     var seen = {}, out = [];
@@ -878,7 +883,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   }
   function cldFallback(why) {
     var was = listen;
-    cldStop(); CLD.on = false; cldSave(false); cldBtn();
+    cldStop(); CLD.on = false; cldSave(false); cldBtn(); cldUsageShow();
     $("heard").textContent = "تعذّر السماع السحابي (" + why + ")، تم الرجوع إلى التعرّف المدمج في المتصفح.";
     if (was) { listen = false; startMic(); }
   }
@@ -965,11 +970,14 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   CLD.useBase = null; CLD.useLim = 60; CLD.openT = 0; CLD.useT = 0;
   function arD(n) { return String(n).replace(/\d/g, function (d) { return "٠١٢٣٤٥٦٧٨٩"[d]; }); }
   function cldUsageShow() {
-    var el = $("usage"); if (!el || CLD.useBase === null) return;
+    var el = $("usage"); if (!el) return;
+    if (!CLD.on) { el.textContent = "وضع الجهاز — مجاني"; return; }
+    if (CLD.useBase === null) return;
     var sec = CLD.useBase + (CLD.openT ? (Date.now() - CLD.openT) / 1000 : 0);
     el.textContent = "استخدمت " + arD(Math.min(CLD.useLim, Math.ceil(sec / 60))) + " من " + arD(CLD.useLim) + " دقيقة اليوم";
   }
   function cldUsage() {
+    if (!CLD.on) { cldUsageShow(); return; }
     CLD.useT = Date.now();
     fetch(USAGE_URL, { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (u) {
       if (CLD.openT) return;                                    // a stream is open: keep the live estimate
@@ -999,20 +1007,40 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     if (typeof document === "undefined" || !document.createElement || $("btnCloud")) return;
     var mic = $("btnMic"); if (!mic || !mic.parentNode) return;
     var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); cldUsage(); }
-    var b = document.createElement("button"); b.type = "button"; b.id = "btnCloud"; b.title = "تعرّف سحابي على الكلام (يحتاج اتصال إنترنت)";
-    mic.parentNode.insertBefore(b, mic.nextSibling);
+    var dk2 = document.querySelector(".dock");
+    var b = document.createElement("button"); b.type = "button"; b.id = "btnCloud";
+    b.style.cssText = "grid-column:1/-1;width:100%;padding:7px 10px;font-size:13px;border-radius:12px;border:1px solid var(--line);background:#e8d9b9;color:var(--ink);cursor:pointer";
+    if (dk2) {
+      var us = $("usage");
+      if (us && us.parentNode === dk2) dk2.insertBefore(b, us);
+      else dk2.appendChild(b);
+    } else {
+      mic.parentNode.insertBefore(b, mic.nextSibling);
+    }
     b.addEventListener("click", function (e) {
       e.stopPropagation();
-      var was = listen; if (was) stopMic();
-      CLD.on = !CLD.on; cldSave(CLD.on);
-      if (CLD.on && ASRS.on) { ASRS.on = false; asrSave(false); asrBtn(); }
-      cldBtn(); if (!CLD.on) $("heard").textContent = "السماع السحابي متوقف — يُستخدم التعرّف المدمج";
+      var was = listen;
+      if (was) stopMic();
+      var next = !CLD.on;
+      if (!next) {
+        // device (Web Speech) mode — not the on-device Whisper worker
+        if (ASRS.on) { ASRS.on = false; asrSave(false); asrBtn(); }
+        var C = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!C) {
+          alert("هذا الجهاز أو المتصفح لا يدعم التعرّف على الكلام المدمج.\nجرّب Chrome على أندرويد، أو أبقِ الوضع السحابي.");
+          // still switch so he can see the control; startMic will refuse cleanly
+        }
+      } else if (ASRS.on) { ASRS.on = false; asrSave(false); asrBtn(); }
+      CLD.on = next; cldSave(CLD.on); cldBtn(); cldUsageShow();
+      if (CLD.on) { cldUsage(); if ($("heard")) $("heard").textContent = "وضع السماع السحابي"; }
+      else { if ($("heard")) $("heard").textContent = "وضع الجهاز — التعرّف المدمج في المتصفح"; }
       if (was) startMic();
     });
-    var hd = $("heard"); if (hd && hd.style) hd.style.display = "none";   // cloud test page: no heard-transcript box
-    // cloud test page: cloud listening always on (built-in fallback stays automatic), no mode buttons
-    CLD.on = true; if (ASRS.on) { ASRS.on = false; asrBtn(); }
-    b.style.display = "none"; var ab = $("btnASR"); if (ab) ab.style.display = "none";
+    var ab = $("btnASR"); if (ab) ab.style.display = "none";
+    CLD.on = cldSaved();
+    if (ASRS.on) { ASRS.on = false; asrSave(false); asrBtn(); }
+    cldBtn(); cldUsageShow();
+    if (CLD.on) cldUsage();
     // pt217u ui_clean: hide header blurb + aside on all sizes (empty beige strip above السابق/التالي; the jump box already navigates)
     var st = document.createElement("style"); st.textContent = "aside{display:none!important}header{padding:8px 12px;min-height:0}header>div:first-child{display:none!important}.sub{display:none!important}h1.appH{display:none!important}"; document.head.appendChild(st);
 
@@ -1220,7 +1248,10 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     if (CLD.on) { matcher = makeMatcher(norms); cldStart(); return; }
     if (ASRS.on) { matcher = makeMatcher(norms); asrStart(); return; }
     var C = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!C) { alert("افتح الصفحة في Chrome أو Edge"); return; }
+    if (!C) {
+      alert("هذا الجهاز أو المتصفح لا يدعم التعرّف على الكلام المدمج.\nجرّب Chrome على أندرويد، أو ارجع لوضع «التسميع: سحابي».");
+      return;
+    }
     matcher = makeMatcher(norms);
     listen = true; restartTries = 0; badge(true);
     try { newRec(); rec.start(); } catch (e) { scheduleRestart(250); }
