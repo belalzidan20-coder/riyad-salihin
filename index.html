@@ -817,8 +817,11 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   }
   function badge(on) {
     if (!on && SND.on) beep(false); SND.on = !!on;
-    if (on) { $("btnMic").textContent = "إيقاف"; $("btnMic").className = "livebtn"; $("st").textContent = "يستمع إليك الآن"; $("st").classList.add("live"); }
-    else { $("btnMic").textContent = "ابدأ القراءة"; $("btnMic").className = "gold"; $("st").textContent = "الميكروفون متوقف"; $("st").classList.remove("live"); }
+    if (on) {
+      $("btnMic").textContent = "إيقاف"; $("btnMic").className = "livebtn";
+      var via = (typeof CLD !== "undefined" && CLD.on) ? "السحابة" : "الجهاز";
+      $("st").textContent = "يستمع عبر: " + via; $("st").classList.add("live");
+    } else { $("btnMic").textContent = "ابدأ القراءة"; $("btnMic").className = "gold"; $("st").textContent = "الميكروفون متوقف"; $("st").classList.remove("live"); }
   }
   function scheduleRestart(ms) {           // keep listening until the user presses stop
     if (!listen) return;
@@ -888,6 +891,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     if (was) { listen = false; startMic(); }
   }
   function cldStart() {
+    if (!CLD.on) return;  // hard guard: never open Deepgram when device mode
     if (!CLOUD_URL) { cldFallback("الخدمة غير مفعّلة بعد"); return; }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.WebSocket) { cldFallback("غير مدعوم"); return; }
     listen = true; badge(true); stuckAt = -2; stuckHint(); CLD.fails = 0; CLD.idle = false; CLD.pend = []; CLD.pre = []; CLD.preN = 0; CLD.lastVoice = Date.now();
@@ -896,6 +900,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     clearInterval(CLD.kaT); CLD.kaT = setInterval(cldTick, 2000);
   }
   function cldConnect() {
+    if (!CLD.on) return;  // hard guard: device mode must never open the Deepgram WebSocket
     var ws; try { ws = new WebSocket(CLOUD_URL + cldTerms()); } catch (e) { cldFallback("تعذّر الاتصال"); return; }
     ws.binaryType = "arraybuffer"; CLD.ws = ws; CLD.opened = false;
     ws.onopen = function () { if (ws !== CLD.ws) return; CLD.opened = true; CLD.fails = 0; cldOpened(); ws.addEventListener("close", cldClosed); if (CLD.pend.length) { for (var k = 0; k < CLD.pend.length; k++) ws.send(CLD.pend[k].buffer); CLD.pend = []; } $("heard").textContent = "السماع السحابي جاهز — اقرأ"; };
@@ -1245,6 +1250,10 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     var paint0 = paint; paint = function () { paint0(); var L = BOX[words.length - 1]; if (cur === words.length - 1 && L && L.classList) L.classList.remove("now"); };
   }
   function startMic() {
+    // Re-read mode at start time (not a stale page-load snapshot)
+    try { CLD.on = cldSaved(); } catch (e) {}
+    if (!CLD.on && ASRS.on) { ASRS.on = false; try { asrSave(false); asrBtn(); } catch (e2) {} }
+    try { cldBtn(); } catch (e3) {}
     if (CLD.on) { matcher = makeMatcher(norms); cldStart(); return; }
     if (ASRS.on) { matcher = makeMatcher(norms); asrStart(); return; }
     var C = window.SpeechRecognition || window.webkitSpeechRecognition;
