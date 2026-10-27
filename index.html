@@ -1031,7 +1031,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
         "#idxClose{border:0;background:#e8d9b9;border-radius:10px;padding:8px 12px;font:inherit;cursor:pointer;color:var(--ink)}",
         "#idxQ{width:100%;margin-bottom:10px;background:#e8d9b9;color:var(--ink);border:0;border-radius:10px;padding:10px 12px;font:inherit;box-sizing:border-box}",
         "#idxSide{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}",
-        "#idxSide .miss{padding:14px;background:#ede0c4;border-radius:12px;color:#7a6247;text-align:center;line-height:1.7}",
+        "#idxSide .idxCount{padding:8px 10px;margin:0 0 8px;border-radius:10px;background:#e8d9b9;color:#5a3a1e;font-size:14px;text-align:center;line-height:1.6}#idxSide .miss{padding:14px;background:#ede0c4;border-radius:12px;color:#7a6247;text-align:center;line-height:1.7}",
         "#idxSide .hit{display:block;width:100%;text-align:right;margin:0 0 8px;padding:11px;border:0;border-radius:14px;background:#ede0c4;color:inherit;font:inherit;cursor:pointer}",
         "#idxSide .hit strong{display:block}",
         "#idxSide .hit small{display:block;color:var(--muted);margin-top:4px;line-height:1.5}",
@@ -1055,6 +1055,16 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       function stripTashkeel(s) {
         return String(s || "").replace(/[\u064B-\u0652\u0670\u0640]/g, "");
       }
+
+      function toIndic(n) {
+        return String(n).replace(/[0-9]/g, function (d) { return "٠١٢٣٤٥٦٧٨٩"[d]; });
+      }
+      function fmtIdxCount(total, shown) {
+        if (!total) return "لا توجد نتائج";
+        var s = toIndic(total) + " نتيجة";
+        if (shown != null && shown < total) s += " (عُرض أول " + toIndic(shown) + ")";
+        return s;
+      }
       function closeIdx() { ov.classList.remove("on"); }
       function openIdx() {
         ov.classList.add("on");
@@ -1077,31 +1087,41 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
           for (var i = 0; i < DATA.length; i++) if (DATA[i].n === num) { found = i; break; }
           if (found >= 0) {
             var h = DATA[found];
-            html = '<button type="button" class="hit" data-go="' + found + '"><strong>' + h.n + ". " + esc(h.title) + "</strong><small>" + esc(h.who) + "</small></button>";
+            html = '<div class="idxCount">' + fmtIdxCount(1, 1) + '</div>';
+            html += '<button type="button" class="hit" data-go="' + found + '"><strong>' + h.n + ". " + esc(h.title) + "</strong><small>" + esc(h.who) + "</small></button>";
             sd.innerHTML = html;
           } else if (num >= 1 && num <= 1955) {
-            sd.innerHTML = '<div class="miss">الحديث ' + num + " لم يُضَف بعد</div>";
+            sd.innerHTML = '<div class="idxCount">' + fmtIdxCount(0) + '</div><div class="miss">الحديث ' + toIndic(num) + " لم يُضَف بعد</div>";
           } else {
-            sd.innerHTML = '<div class="miss">لا نتائج</div>';
+            sd.innerHTML = '<div class="idxCount">' + fmtIdxCount(0) + '</div>';
           }
           return;
         }
         // word / mixed search (ignore diacritics); also keep tree when empty
-        for (var i = 0; i < DATA.length; i++) {
-          var h = DATA[i], bk = h.bk || "", ch = h.ch || "";
-          if (qFold) {
+        if (qFold) {
+          var hits = [];
+          for (var i = 0; i < DATA.length; i++) {
+            var h = DATA[i], bk = h.bk || "", ch = h.ch || "";
             var hay = stripTashkeel(h.n + " " + h.title + " " + h.who + " " + h.text + " " + ch + " " + bk).toLowerCase();
             if (hay.indexOf(qFold) === -1) continue;
-            // flat hit with snippet when searching words
-            any = true;
             var plain = stripTashkeel(h.text);
             var pos = plain.toLowerCase().indexOf(qFold);
             var sn = pos >= 0 ? plain.slice(Math.max(0, pos - 18), pos + qFold.length + 28) : plain.slice(0, 48);
             if (pos > 18) sn = "…" + sn;
             if (pos + qFold.length + 28 < plain.length) sn = sn + "…";
-            html += '<button type="button" class="hit" data-go="' + i + '"><strong>' + h.n + ". " + esc(h.title) + "</strong><small>" + esc(sn) + "</small></button>";
-            continue;
+            hits.push({ i: i, h: h, sn: sn });
           }
+          var total = hits.length, shown = Math.min(total, 50);
+          html = '<div class="idxCount">' + fmtIdxCount(total, shown) + "</div>";
+          for (var j = 0; j < shown; j++) {
+            var it = hits[j];
+            html += '<button type="button" class="hit" data-go="' + it.i + '"><strong>' + it.h.n + ". " + esc(it.h.title) + "</strong><small>" + esc(it.sn) + "</small></button>";
+          }
+          sd.innerHTML = html;
+          return;
+        }
+        for (var i = 0; i < DATA.length; i++) {
+          var h = DATA[i], bk = h.bk || "", ch = h.ch || "";
           any = true;
           if (bk !== lastB) {
             if (lastC !== null) html += "</details>"; if (lastB !== null) html += "</details>";
@@ -1120,10 +1140,8 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
           html += "<small>" + esc(h.who) + "</small>";
           html += '<div class="barmini"><i style="width:' + Math.round((best[i] || 0) * 100) + '%"></i></div></button>';
         }
-        if (!qFold) {
-          if (lastC !== null) html += "</details>"; if (lastB !== null) html += "</details>";
-        }
-        sd.innerHTML = any ? html : "<div class='chap'>لا نتائج</div>";
+        if (lastC !== null) html += "</details>"; if (lastB !== null) html += "</details>";
+        sd.innerHTML = any ? html : '<div class="idxCount">' + fmtIdxCount(0) + "</div>";
         if (!qFold) sd.querySelectorAll("details").forEach(function (d) {
           d.addEventListener("toggle", function () { TOPEN[d.getAttribute("data-k")] = d.open; });
         });
