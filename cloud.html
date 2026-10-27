@@ -33,7 +33,7 @@ aside{border-left:1px solid var(--line);overflow:auto;padding:12px;background:#e
 .barmini i{display:block;height:100%;background:var(--gold);width:0}
 .chap{color:var(--gold);font-size:12px;margin:10px 4px 6px}
 .tbk>summary{cursor:pointer;font-weight:700;color:#5a3a1e;font-size:15px;padding:9px 6px;border-bottom:1px solid #d2bb8f;list-style:none}.tbk>summary::before{content:"◂ ";color:var(--gold)}.tbk[open]>summary::before{content:"▾ "}.tch{margin-right:10px}.tch>summary{cursor:pointer;color:var(--gold);font-size:13px;padding:7px 4px;list-style:none}.tch>summary::before{content:"◂ "}.tch[open]>summary::before{content:"▾ "}.tbk summary::-webkit-details-marker{display:none}.tch .hitem{margin-right:6px;width:calc(100% - 6px)}
-main{display:flex;flex-direction:column;min-width:0}
+main{display:flex;flex-direction:column;min-width:0;min-height:0}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 16px 0}
 button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;background:#e8d9b9;color:var(--ink);cursor:pointer}
 .gold{background:var(--gold);color:#fff8ea;font-weight:700}
@@ -43,7 +43,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
 .title{margin:6px 0 0;font-size:20px;color:var(--gold2)}
 .who{margin:4px 0 0;color:var(--muted);font-size:13px}
 .heard{display:none!important;margin:8px 18px;padding:8px 12px;border-radius:12px;background:#ebdfc3;color:#5a3a1e;font-size:13px}
-.stage{flex:1;overflow:auto;padding:8px 16px 140px}
+.stage{flex:1;overflow:auto;padding:8px 16px 12px;display:flex;flex-direction:column;min-height:0}.stage.vcenter{justify-content:center}
 .sheet{max-width:980px;margin:0 auto;background:#f3e9d2;border:1px solid #d2bb8f;border-radius:24px;padding:28px 24px}
 .text{font-family:Amiri,serif;font-size:30px;line-height:2.55}
 .w{display:inline;margin-left:8px;padding:0 4px;border-radius:8px;cursor:pointer}
@@ -400,16 +400,70 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       im.src = L[k].src;
     }
   }
+  function fitScale(L, availW, availH) {
+    /* max scale that fills width; grows to fill free height without overflow; long hadiths stay at width-zoom and scroll */
+    var refW = 0, k, j, PAD = 7;
+    for (k = 0; k < L.length; k++) refW = Math.max(refW, L[k].w);
+    if (!refW || !availW) return 1;
+    function pcsAt(sc) {
+      var out = [];
+      for (k = 0; k < L.length; k++) {
+        var ln = L[k], B = ln.b; if (!B.length) continue;
+        for (j = 0; j < B.length; j++) {
+          var R = j === 0 ? (k === 0 ? ln.w : Math.min(ln.w, B[j][1], ln.e ? ln.e[1] + PAD : ln.w)) : (ln.k ? ln.k[j - 1] : (B[j - 1][0] + B[j][1]) / 2);
+          var Lx = j === B.length - 1 ? Math.max(0, B[j][0], ln.e ? ln.e[0] - PAD : 0) : (ln.k ? ln.k[j] : (B[j][0] + B[j + 1][1]) / 2);
+          out.push({ k: k, w: (R - Lx) * sc, h: ln.h * sc });
+        }
+      }
+      return out;
+    }
+    function heightAt(sc) {
+      var pcs = pcsAt(sc), rowW = 0, rowH = 0, H = 0, open = false, t;
+      for (t = 0; t < pcs.length; t++) {
+        var pc = pcs[t];
+        if (!open || rowW + pc.w > availW + 0.5) {
+          if (open) H += rowH;
+          rowW = 0; rowH = 0; open = true;
+        }
+        rowW += pc.w; if (pc.h > rowH) rowH = pc.h;
+      }
+      if (open) H += rowH;
+      return H;
+    }
+    var scMin = availW / refW * 1.4;                     // prior phone readability floor (fill-width × 1.4)
+    if (heightAt(scMin) >= availH) return scMin;         // long: keep max width zoom, allow scroll
+    var lo = scMin, hi = scMin * 10, it;
+    for (it = 0; it < 20; it++) {
+      var mid = (lo + hi) / 2;
+      if (heightAt(mid) <= availH) lo = mid; else hi = mid;
+    }
+    return lo;
+  }
+  function stageAvailH() {
+    var st = document.querySelector(".stage"), sheet = st && st.querySelector(".sheet");
+    if (!st) return 480;
+    var pad = 28;
+    if (sheet) {
+      var cs = getComputedStyle(sheet);
+      pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    }
+    return Math.max(140, st.clientHeight - pad - 4);
+  }
+  function syncStageCenter() {
+    var st = document.querySelector(".stage"), sheet = st && st.querySelector(".sheet");
+    if (!st || !sheet) return;
+    st.classList.toggle("vcenter", sheet.offsetHeight <= st.clientHeight - 2);
+  }
   function build() {
     var box = $("box"); box.textContent = "";
     BOX = []; SPANS = [];
     var L = IMGS[DATA[idx].n], frag = document.createDocumentFragment();
-    var ZW = box.clientWidth || 0, ZOOMTXT = 1.4;
+    var ZW = box.clientWidth || 0;
     if (L && L.length && ZW && ZW < 700) {
-      /* ZOOMTXT (pt188u): phone — enlarge book text and reflow word-crops into rows (RTL), every word kept in order */
+      /* phone: enlarge line crops to fill width, then grow to fill free stage height; overlays share the same sc */
       var refW = 0; for (var k = 0; k < L.length; k++) refW = Math.max(refW, L[k].w);
       var cs = getComputedStyle(box), avail = ZW - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 2;
-      var sc = avail / refW * ZOOMTXT, PAD = 7, pcs = [];
+      var sc = fitScale(L, avail, stageAvailH()), PAD = 7, pcs = [];
       for (var k = 0; k < L.length; k++) {
         var ln = L[k], B = ln.b; if (!B.length) continue;
         for (var j = 0; j < B.length; j++) {
@@ -467,8 +521,14 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     box.appendChild(frag);
     shown = cur; shownMode = mode;
     status();
+    requestAnimationFrame(syncStageCenter);
   }
-  var _zw = 0; window.addEventListener("resize", function () { var b = $("box"); if (b && Math.abs(b.clientWidth - _zw) > 20) { _zw = b.clientWidth; build(); } });
+  var _zw = 0, _zh = 0; window.addEventListener("resize", function () {
+    var b = $("box"), st = document.querySelector(".stage"); if (!b) return;
+    var nw = b.clientWidth, nh = st ? st.clientHeight : 0;
+    if (Math.abs(nw - _zw) > 20 || Math.abs(nh - _zh) > 40) { _zw = nw; _zh = nh; build(); }
+    else syncStageCenter();
+  });
   function status() {
     var p = words.length ? (cur + 1) / words.length : 0;
     if (p > best[idx]) {
