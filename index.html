@@ -82,7 +82,35 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
 .ln img{display:block;width:100%;height:100%;mix-blend-mode:multiply}
 .zrow{display:flex;flex-direction:row;justify-content:flex-start;align-items:flex-start;width:100%}.ln.zc{flex:none;overflow:hidden;margin:0;max-width:none;width:auto}.ln.zc img{position:absolute;top:0;max-width:none}
 .sheet{box-shadow:0 2px 14px rgba(90,58,30,.15)}
-@media (max-width:700px){.sub{display:none}aside{display:none!important}.installbar p{font-size:11px}.layout{display:flex;flex-direction:column;flex:1;min-height:0}main{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start}main.stack-center{justify-content:center}.toolbar{padding:4px 6px;gap:6px;align-items:center;flex-shrink:0}.meta{padding:0 8px;flex-shrink:0}.title{font-size:15px;margin:0}.who{font-size:11px;margin:0}.heard{display:none!important;margin:0;padding:0;min-height:0}.stage{flex:0 1 auto;overflow:visible;padding:0;min-height:0;display:block}.stage.vcenter{justify-content:unset}.sheet{padding:0;border-radius:10px;border-left:none;border-right:none;margin:0}.dock{position:relative;bottom:auto;gap:6px;padding:4px 8px;padding-bottom:max(20px,calc(env(safe-area-inset-bottom,0px) + 16px));flex-shrink:0;border-top:1px solid var(--line)}.dock button{padding:8px 9px;font-size:13px}.jumpbox input,.jumpbox select{width:64px}h1{font-size:16px}header{display:none!important}#btnIndex{background:#5a3a1e;color:#f3e9d2;border-color:#5a3a1e;font-weight:700;padding:8px 10px;border-radius:12px;flex:0 0 auto}#ver{grid-column:1/-1;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85}#modeHide,#modeHint,#modeShow{display:none!important}}
+
+html.phone .layout{display:flex;flex-direction:column;flex:1;min-height:0}
+html.phone aside{display:none!important}
+html.phone header{display:none!important}
+html.phone .sub{display:none}
+html.phone main{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}
+html.phone main.stack-center{justify-content:center}
+html.phone .stack{flex:0 0 auto;display:flex;flex-direction:column;width:100%;min-height:0}
+html.phone .toolbar{padding:4px 6px;gap:6px;align-items:center;flex:0 0 auto}
+html.phone .meta{padding:0 8px;flex:0 0 auto}
+html.phone .title{font-size:15px;margin:0}
+html.phone .who{font-size:11px;margin:0}
+html.phone .heard{display:none!important;margin:0;padding:0;min-height:0;height:0;overflow:hidden}
+html.phone .stage{flex:0 0 auto!important;flex-grow:0!important;overflow:visible;padding:0;min-height:0!important;height:auto!important;max-height:none;display:block!important;align-items:stretch}
+html.phone .stage.vcenter{justify-content:unset}
+html.phone .sheet{flex:0 0 auto!important;flex-grow:0!important;height:auto!important;min-height:0!important;max-height:none;align-self:auto;padding:0;border-radius:10px;border-left:none;border-right:none;margin:0;width:100%}
+html.phone .sheet .text,#box{height:auto!important;min-height:0!important}
+html.phone .dock{position:relative!important;bottom:auto;gap:6px;padding:4px 8px;padding-bottom:4px;flex:0 0 auto;border-top:1px solid var(--line)}
+html.phone .dock button{padding:8px 9px;font-size:13px}
+html.phone .jumpbox input,html.phone .jumpbox select{width:64px}
+html.phone h1{font-size:16px}
+html.phone #btnIndex{background:#5a3a1e;color:#f3e9d2;border-color:#5a3a1e;font-weight:700;padding:8px 10px;border-radius:12px;flex:0 0 auto}
+html.phone #ver{grid-column:1/-1;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85}
+html.phone #modeHide,html.phone #modeHint,html.phone #modeShow{display:none!important}
+html.phone .installbar p{font-size:11px}
+/* iOS Safari: use dynamic viewport so browser chrome doesn't invent gaps */
+html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill-available}html.phone body{padding-bottom:max(8px,env(safe-area-inset-bottom,0px))!important}
+
+@media (max-width:900px){.sub{display:none}aside{display:none!important}.installbar p{font-size:11px}.layout{display:flex;flex-direction:column;flex:1;min-height:0}main{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}main.stack-center{justify-content:center}.stack{flex:0 0 auto;display:flex;flex-direction:column;width:100%;min-height:0}.toolbar{padding:4px 6px;gap:6px;align-items:center;flex:0 0 auto}.meta{padding:0 8px;flex:0 0 auto}.title{font-size:15px;margin:0}.who{font-size:11px;margin:0}.heard{display:none!important;margin:0;padding:0;min-height:0;height:0;overflow:hidden}.stage{flex:0 0 auto!important;flex-grow:0!important;overflow:visible;padding:0;min-height:0!important;height:auto!important;display:block!important}.stage.vcenter{justify-content:unset}.sheet{flex:0 0 auto!important;flex-grow:0!important;height:auto!important;min-height:0!important;padding:0;border-radius:10px;border-left:none;border-right:none;margin:0;width:100%}.dock{position:relative!important;bottom:auto;gap:6px;padding:4px 8px;padding-bottom:4px;flex:0 0 auto;border-top:1px solid var(--line)}.dock button{padding:8px 9px;font-size:13px}.jumpbox input,.jumpbox select{width:64px}h1{font-size:16px}header{display:none!important}#btnIndex{background:#5a3a1e;color:#f3e9d2;border-color:#5a3a1e;font-weight:700;padding:8px 10px;border-radius:12px;flex:0 0 auto}#ver{grid-column:1/-1;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85}#modeHide,#modeHint,#modeShow{display:none!important}}
 </style>
 </head>
 <body>
@@ -108,6 +136,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     <div id="side"></div>
   </aside>
   <main>
+    <div class="stack">
     <div class="toolbar">
       <button type="button" id="btnPrevH">السابق</button>
       <span id="poslbl" class="chip">1 / 200</span>
@@ -143,6 +172,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       <button type="button" id="btnHideAll">إخفاء من جديد</button>
       <div class="prog"><i id="bar"></i></div>
       <span id="cnt">0/0</span>
+    </div>
     </div>
   </main>
 </div>
@@ -563,6 +593,11 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     if (window.matchMedia && window.matchMedia("(hover: none) and (pointer: coarse)").matches && w < 1024) return true;
     return false;
   }
+  function applyPhoneClass() {
+    try { document.documentElement.classList.toggle("phone", !!isPhoneLayout()); } catch (e) {}
+  }
+  applyPhoneClass();
+
   function stageAvailH() {
     var st = document.querySelector(".stage"), sheet = st && st.querySelector(".sheet");
     if (!st) return 480;
@@ -577,14 +612,26 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   function syncStageCenter() {
     var st = document.querySelector(".stage"), sheet = st && st.querySelector(".sheet");
     var main = document.querySelector("main");
+    var stack = document.querySelector(".stack");
     if (st && sheet) {
-      var sh = Math.max(sheet.offsetHeight, sheet.scrollHeight);
-      st.classList.toggle("vcenter", sh <= st.clientHeight + 1);
+      /* Never let stage/sheet flex-grow invent empty gaps */
+      st.style.flex = "0 0 auto";
+      st.style.flexGrow = "0";
+      st.style.height = "auto";
+      st.style.minHeight = "0";
+      sheet.style.flex = "0 0 auto";
+      sheet.style.flexGrow = "0";
+      sheet.style.height = "auto";
+      sheet.style.minHeight = "0";
+      st.classList.remove("vcenter");
     }
-    /* Phone: keep [toolbar + hadith + dock] tight and vertically centered when the stack fits */
     if (main) {
+      /* Center the tight stack when it fits the visible main area */
       main.classList.remove("stack-center");
       var fits = main.scrollHeight <= main.clientHeight + 2;
+      if (stack) {
+        fits = stack.offsetHeight <= main.clientHeight + 2;
+      }
       main.classList.toggle("stack-center", fits);
     }
   }
@@ -663,6 +710,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   }
   var _zw = 0, _zh = 0;
   function onStageResize() {
+    applyPhoneClass();
     var b = $("box"), st = document.querySelector(".stage"); if (!b) return;
     var nw = b.clientWidth, nh = st ? st.clientHeight : 0;
     if (Math.abs(nw - _zw) > 10 || Math.abs(nh - _zh) > 24) { _zw = nw; _zh = nh; build(); }
@@ -1334,7 +1382,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   function cldInit() {
     if (typeof document === "undefined" || !document.createElement || $("btnCloud")) return;
     var mic = $("btnMic"); if (!mic || !mic.parentNode) return;
-    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.textContent = "tarteel-fill229"; ver.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85;padding-bottom:2px"; dk.appendChild(ver); }
+    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.textContent = "tarteel-fill230"; ver.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85;padding-bottom:2px"; dk.appendChild(ver); }
     var dk2 = document.querySelector(".dock");
     var b = document.createElement("button"); b.type = "button"; b.id = "btnCloud";
     b.style.cssText = "grid-column:1/-1;width:100%;padding:7px 10px;font-size:13px;border-radius:12px;border:1px solid var(--line);background:#e8d9b9;color:var(--ink);cursor:pointer";
