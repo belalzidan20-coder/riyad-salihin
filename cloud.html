@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>رياض الصالحين</title>
 
 <link rel="manifest" href="manifest.webmanifest">
@@ -18,7 +18,7 @@
 :root{--paper:#f3e9d2;--bg:#f3e9d2;--ink:#3b2a1a;--muted:#7a6247;--gold:#8b5a2b;--gold2:#5a3a1e;--line:#d9c7a3;--ok:#6b7d3a;--bad:#a8452f}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:#f3e9d2;color:var(--ink);font-family:Cairo,sans-serif}
-body{display:flex;flex-direction:column}
+body{display:flex;flex-direction:column;padding-top:max(16px,calc(env(safe-area-inset-top,0px) + 12px));padding-left:max(12px,calc(env(safe-area-inset-left,0px) + 12px));padding-right:max(12px,calc(env(safe-area-inset-right,0px) + 12px));padding-bottom:0;box-sizing:border-box}
 header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);gap:12px}
 h1{margin:0;font-size:18px;color:var(--gold2)}
 .sub{margin:3px 0 0;font-size:12px;color:var(--muted)}
@@ -53,7 +53,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
 .hint{color:#b59f7e}
 .toast{display:none;margin-top:16px;padding:14px;border-radius:14px;background:#e3d2ae;text-align:center}
 .toast.show{display:block}
-.dock{position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:#f3e9d2;border-top:1px solid var(--line)}
+.dock{position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;padding-bottom:max(14px,calc(env(safe-area-inset-bottom,0px) + 14px));background:#f3e9d2;border-top:1px solid var(--line)}
 .prog{flex:1;min-width:120px;height:8px;background:#e3d2ae;border-radius:99px;overflow:hidden}
 .prog i{display:block;height:100%;width:0;background:var(--gold)}
 .search{width:100%;margin-bottom:10px;background:#e8d9b9;color:var(--ink);border:0;border-radius:10px;padding:8px 10px;font:inherit}
@@ -82,7 +82,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
 .ln img{display:block;width:100%;height:100%;mix-blend-mode:multiply}
 .zrow{display:flex;flex-direction:row;justify-content:flex-start;align-items:flex-start;width:100%}.ln.zc{flex:none;overflow:hidden;margin:0;max-width:none}.ln.zc img{position:absolute;top:0;max-width:none}
 .sheet{box-shadow:0 2px 14px rgba(90,58,30,.15)}
-@media (max-width:700px){.sub{display:none}aside{max-height:120px}.installbar p{font-size:11px}.title{font-size:17px}.sheet{padding:14px 6px;border-radius:14px}.dock{gap:6px;padding:8px}.dock button{padding:8px 9px;font-size:13px}.jumpbox input,.jumpbox select{width:64px}h1{font-size:16px}}
+@media (max-width:700px){.sub{display:none}aside{max-height:120px}.installbar p{font-size:11px}.title{font-size:17px}.sheet{padding:14px 6px;border-radius:14px}.dock{gap:6px;padding:8px;padding-bottom:max(14px,calc(env(safe-area-inset-bottom,0px) + 14px))}.dock button{padding:8px 9px;font-size:13px}.jumpbox input,.jumpbox select{width:64px}h1{font-size:16px}}
 </style>
 </head>
 <body>
@@ -439,6 +439,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     }
     return lo;
   }
+  function isPhoneLayout() { return (window.innerWidth || document.documentElement.clientWidth || 0) < 700; }
   function stageAvailH() {
     var st = document.querySelector(".stage"), sheet = st && st.querySelector(".sheet");
     if (!st) return 480;
@@ -447,22 +448,33 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       var cs = getComputedStyle(sheet);
       pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
     }
+    /* stage already sits above the dock; body/dock safe-area padding shrinks the flex area — use clientHeight as-is */
     return Math.max(140, st.clientHeight - pad - 4);
   }
   function syncStageCenter() {
     var st = document.querySelector(".stage"), sheet = st && st.querySelector(".sheet");
     if (!st || !sheet) return;
-    st.classList.toggle("vcenter", sheet.offsetHeight <= st.clientHeight - 2);
+    var sh = Math.max(sheet.offsetHeight, sheet.scrollHeight);
+    st.classList.toggle("vcenter", sh <= st.clientHeight + 1);
   }
+  var _buildGen = 0;
   function build() {
-    var box = $("box"); box.textContent = "";
+    var box = $("box"); if (!box) return;
+    var gen = ++_buildGen;
     BOX = []; SPANS = [];
     var L = IMGS[DATA[idx].n], frag = document.createDocumentFragment();
     var ZW = box.clientWidth || 0;
-    if (L && L.length && ZW && ZW < 700) {
+    /* First paint often has ZW=0 before flex layout — defer so phone fitScale can run */
+    if (L && L.length && !ZW) {
+      box.textContent = "";
+      requestAnimationFrame(function () { if (gen === _buildGen) build(); });
+      return;
+    }
+    box.textContent = "";
+    if (L && L.length && isPhoneLayout()) {
       /* phone: enlarge line crops to fill width, then grow to fill free stage height; overlays share the same sc */
       var refW = 0; for (var k = 0; k < L.length; k++) refW = Math.max(refW, L[k].w);
-      var cs = getComputedStyle(box), avail = ZW - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 2;
+      var cs = getComputedStyle(box), avail = Math.max(120, ZW - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 2);
       var sc = fitScale(L, avail, stageAvailH()), PAD = 7, pcs = [];
       for (var k = 0; k < L.length; k++) {
         var ln = L[k], B = ln.b; if (!B.length) continue;
@@ -521,14 +533,26 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     box.appendChild(frag);
     shown = cur; shownMode = mode;
     status();
-    requestAnimationFrame(syncStageCenter);
+    _zw = box.clientWidth; _zh = (document.querySelector(".stage") || {}).clientHeight || 0;
+    requestAnimationFrame(function () { requestAnimationFrame(syncStageCenter); });
   }
-  var _zw = 0, _zh = 0; window.addEventListener("resize", function () {
+  var _zw = 0, _zh = 0;
+  function onStageResize() {
     var b = $("box"), st = document.querySelector(".stage"); if (!b) return;
     var nw = b.clientWidth, nh = st ? st.clientHeight : 0;
-    if (Math.abs(nw - _zw) > 20 || Math.abs(nh - _zh) > 40) { _zw = nw; _zh = nh; build(); }
+    if (Math.abs(nw - _zw) > 10 || Math.abs(nh - _zh) > 24) { _zw = nw; _zh = nh; build(); }
     else syncStageCenter();
-  });
+  }
+  window.addEventListener("resize", onStageResize);
+  window.addEventListener("orientationchange", function () { setTimeout(onStageResize, 200); });
+  if (typeof ResizeObserver !== "undefined") {
+    requestAnimationFrame(function () {
+      var st = document.querySelector(".stage"), b = $("box");
+      var ro = new ResizeObserver(onStageResize);
+      if (st) ro.observe(st);
+      if (b) ro.observe(b);
+    });
+  }
   function status() {
     var p = words.length ? (cur + 1) / words.length : 0;
     if (p > best[idx]) {
