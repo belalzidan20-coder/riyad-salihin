@@ -1378,7 +1378,9 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     if (on) {
       $("btnMic").textContent = "توقف"; $("btnMic").className = "livebtn";
       var via = (typeof CLD !== "undefined" && CLD.on) ? "السحابة" : "الجهاز";
-      $("st").textContent = "يستمع عبر: " + via; $("st").classList.add("live");
+      if (!ownerHas()) { $("st").textContent = "يستمع"; }
+      else { $("st").textContent = "يستمع عبر: " + via; }
+      $("st").classList.add("live");
     } else { $("btnMic").textContent = "ابدأ القراءة"; $("btnMic").className = "gold"; $("st").textContent = "الميكروفون متوقف"; $("st").classList.remove("live"); }
   }
   function scheduleRestart(ms) {           // keep listening until the user presses stop
@@ -1450,7 +1452,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     return r;
   }
 
-  var APP_VER = "tarteel-fill239";
+  var APP_VER = "tarteel-fill240";
   try { document.documentElement.setAttribute("data-ver", APP_VER); } catch (e) {}
   window.APP_VER = APP_VER;
   try {
@@ -1617,6 +1619,8 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   function arD(n) { return String(n).replace(/\d/g, function (d) { return "٠١٢٣٤٥٦٧٨٩"[d]; }); }
   function cldUsageShow() {
     var el = $("usage"); if (!el) return;
+    if (!ownerHas()) { el.textContent = ""; el.style.display = "none"; return; }
+    el.style.display = "";
     if (!CLD.on) { el.textContent = "التسميع: مجاني"; return; }
     if (CLD.useBase === null) { el.textContent = ""; return; }
     var sec = CLD.useBase + (CLD.openT ? (Date.now() - CLD.openT) / 1000 : 0);
@@ -1655,9 +1659,16 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     if (ws) { try { ws.send(JSON.stringify({ type: "CloseStream" })); } catch (e) {} try { ws.close(1000); } catch (e) {} }
   }
   function cldInit() {
-    if (typeof document === "undefined" || !document.createElement || $("btnCloud")) return;
+    if (typeof document === "undefined" || !document.createElement || CLD._uiDone) return;
+    CLD._uiDone = true;
     var mic = $("btnMic"); if (!mic || !mic.parentNode) return;
-    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.setAttribute("data-ver", APP_VER); ver.setAttribute("aria-hidden", "true"); ver.style.cssText = "display:none!important"; dk.appendChild(ver); } if (dk && !$("credit")) { var cr = document.createElement("div"); cr.id = "credit"; cr.textContent = "إعداد بلال زيدان"; cr.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:10px;color:#7a6247;line-height:1.2;opacity:.9;padding:0 0 4px"; dk.appendChild(cr); }
+    var dk = document.querySelector(".dock"); if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.setAttribute("data-ver", APP_VER); ver.setAttribute("aria-hidden", "true"); ver.style.cssText = "display:none!important"; dk.appendChild(ver); } if (dk && !$("credit")) { var cr = document.createElement("div"); cr.id = "credit"; cr.textContent = "إعداد بلال زيدان"; cr.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:10px;color:#7a6247;line-height:1.2;opacity:.9;padding:0 0 4px"; dk.appendChild(cr); }
+    if (ownerHas() && dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); }
+    if (!ownerHas()) {
+      CLD.on = false; try { cldSave(false); } catch (e0) {}
+      if (ASRS.on) { ASRS.on = false; try { asrSave(false); asrBtn(); } catch (e1) {} }
+      var ab0 = $("btnASR"); if (ab0) ab0.style.display = "none";
+    } else {
     var dk2 = document.querySelector(".dock");
     var b = document.createElement("button"); b.type = "button"; b.id = "btnCloud";
     b.style.cssText = "grid-column:1/-1;width:100%;padding:7px 10px;font-size:13px;border-radius:12px;border:1px solid var(--line);background:#e8d9b9;color:var(--ink);cursor:pointer";
@@ -1700,6 +1711,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     if (ASRS.on) { ASRS.on = false; asrSave(false); asrBtn(); }
     cldBtn(); cldUsageShow();
     if (CLD.on) cldUsage();
+    } // owner-only: btnCloud + usage
     // pt217u ui_clean: hide header blurb + aside on all sizes (empty beige strip above السابق/التالي; the jump box already navigates)
     var st = document.createElement("style"); st.textContent = "aside{display:none!important}header{display:none!important}.sub{display:none!important}h1.appH{display:none!important}"; document.head.appendChild(st);
 
@@ -1919,13 +1931,16 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   function startMic() {
     // Re-read mode at start time (not a stale page-load snapshot)
     try { CLD.on = cldSaved(); } catch (e) {}
+    if (!ownerHas()) { CLD.on = false; try { cldSave(false); } catch (e0) {} }
     if (!CLD.on && ASRS.on) { ASRS.on = false; try { asrSave(false); asrBtn(); } catch (e2) {} }
     try { cldBtn(); } catch (e3) {}
     if (CLD.on) { matcher = makeMatcher(norms); cldStart(); return; }
     if (ASRS.on) { matcher = makeMatcher(norms); asrStart(); return; }
     var C = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!C) {
-      alert("هذا الجهاز أو المتصفح لا يدعم التعرّف على الكلام المدمج.\nجرّب Chrome على أندرويد، أو ارجع لوضع «التسميع: سحابي».");
+      alert(ownerHas()
+        ? "هذا الجهاز أو المتصفح لا يدعم التعرّف على الكلام المدمج.\nجرّب Chrome على أندرويد، أو ارجع لوضع «التسميع: سحابي»."
+        : "هذا الجهاز أو المتصفح لا يدعم التعرّف على الكلام المدمج.\nجرّب Chrome على أندرويد.");
       return;
     }
     matcher = makeMatcher(norms);
