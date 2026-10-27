@@ -18,7 +18,7 @@
 :root{--paper:#f3e9d2;--bg:#f3e9d2;--ink:#3b2a1a;--muted:#7a6247;--gold:#8b5a2b;--gold2:#5a3a1e;--line:#d9c7a3;--ok:#6b7d3a;--bad:#a8452f}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:#f3e9d2;color:var(--ink);font-family:Cairo,sans-serif}
-body{display:flex;flex-direction:column;padding-top:max(16px,calc(env(safe-area-inset-top,0px) + 12px));padding-left:max(12px,calc(env(safe-area-inset-left,0px) + 12px));padding-right:max(12px,calc(env(safe-area-inset-right,0px) + 12px));padding-bottom:0;box-sizing:border-box}
+body{display:flex;flex-direction:column;padding-top:max(16px,calc(env(safe-area-inset-top,0px) + 12px));padding-left:max(10px,calc(env(safe-area-inset-left,0px) + 10px));padding-right:max(10px,calc(env(safe-area-inset-right,0px) + 10px));padding-bottom:0;box-sizing:border-box}
 header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);gap:12px}
 h1{margin:0;font-size:18px;color:var(--gold2)}
 .sub{margin:3px 0 0;font-size:12px;color:var(--muted)}
@@ -43,8 +43,8 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
 .title{margin:6px 0 0;font-size:20px;color:var(--gold2)}
 .who{margin:4px 0 0;color:var(--muted);font-size:13px}
 .heard{display:none!important;margin:8px 18px;padding:8px 12px;border-radius:12px;background:#ebdfc3;color:#5a3a1e;font-size:13px}
-.stage{flex:1;overflow:auto;padding:8px 16px 12px;display:flex;flex-direction:column;align-items:stretch;min-height:0}.stage.vcenter{justify-content:center}
-.sheet{width:100%;max-width:980px;margin:0 auto;box-sizing:border-box;background:#f3e9d2;border:1px solid #d2bb8f;border-radius:24px;padding:28px 24px}
+.stage{flex:1;overflow:auto;padding:4px 8px 6px;display:flex;flex-direction:column;align-items:stretch;min-height:0}.stage.vcenter{justify-content:center}
+.sheet{width:100%;max-width:980px;margin:0 auto;box-sizing:border-box;background:#f3e9d2;border:1px solid #d2bb8f;border-radius:24px;padding:20px 16px}
 .text{font-family:Amiri,serif;font-size:30px;line-height:2.55}
 .w{display:inline;margin-left:8px;padding:0 4px;border-radius:8px;cursor:pointer}
 .hide{color:transparent;background:#e3d2ae}
@@ -53,7 +53,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
 .hint{color:#b59f7e}
 .toast{display:none;margin-top:16px;padding:14px;border-radius:14px;background:#e3d2ae;text-align:center}
 .toast.show{display:block}
-.dock{position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;padding-bottom:max(14px,calc(env(safe-area-inset-bottom,0px) + 14px));background:#f3e9d2;border-top:1px solid var(--line)}
+.dock{position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;padding-bottom:max(28px,calc(env(safe-area-inset-bottom,0px) + 22px));background:#f3e9d2;border-top:1px solid var(--line);z-index:5}
 .prog{flex:1;min-width:120px;height:8px;background:#e3d2ae;border-radius:99px;overflow:hidden}
 .prog i{display:block;height:100%;width:0;background:var(--gold)}
 .search{width:100%;margin-bottom:10px;background:#e8d9b9;color:var(--ink);border:0;border-radius:10px;padding:8px 10px;font:inherit}
@@ -80,9 +80,9 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
 
 .ln{position:relative;background:var(--paper)}
 .ln img{display:block;width:100%;height:100%;mix-blend-mode:multiply}
-.zrow{display:flex;flex-direction:row;justify-content:flex-start;align-items:flex-start;width:100%}.ln.zc{flex:none;overflow:hidden;margin:0;max-width:none}.ln.zc img{position:absolute;top:0;max-width:none}
+.zrow{display:flex;flex-direction:row;justify-content:flex-start;align-items:flex-start;width:100%}.ln.zc{flex:none;overflow:hidden;margin:0;max-width:none;width:auto}.ln.zc img{position:absolute;top:0;max-width:none}
 .sheet{box-shadow:0 2px 14px rgba(90,58,30,.15)}
-@media (max-width:700px){.sub{display:none}aside{max-height:120px}.installbar p{font-size:11px}.title{font-size:17px}.sheet{padding:14px 6px;border-radius:14px}.dock{gap:6px;padding:8px;padding-bottom:max(14px,calc(env(safe-area-inset-bottom,0px) + 14px))}.dock button{padding:8px 9px;font-size:13px}.jumpbox input,.jumpbox select{width:64px}h1{font-size:16px}}
+@media (max-width:700px){.sub{display:none#modeHide,#modeHint,#modeShow{display:none!important}.meta{padding:4px 10px 0}.title{font-size:16px}.who{font-size:12px}}aside{max-height:120px}.installbar p{font-size:11px}.title{font-size:17px}.sheet{padding:8px 2px;border-radius:14px}.stage{padding:2px 4px 4px}.dock{gap:6px;padding:8px;padding-bottom:max(24px,calc(env(safe-area-inset-bottom,0px) + 20px))}.dock button{padding:8px 9px;font-size:13px}.jumpbox input,.jumpbox select{width:64px}h1{font-size:16px}header{display:none!important}.toolbar{padding:6px 8px 0;gap:6px}#btnIndex{background:#5a3a1e;color:#f3e9d2;border-color:#5a3a1e;font-weight:700;padding:8px 10px;border-radius:12px;flex:0 0 auto}#ver{grid-column:1/-1;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85}}
 </style>
 </head>
 <body>
@@ -401,18 +401,18 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     }
   }
   function fitScale(L, availW, availH) {
-    /* max scale that fills width; grows to fill free height without overflow; long hadiths stay at width-zoom and scroll */
-    var refW = 0, k, j, PAD = 7;
-    for (k = 0; k < L.length; k++) refW = Math.max(refW, L[k].w);
-    if (!refW || !availW) return 1;
+    /* Pack word-crops into rows; maximize scale to fill WIDTH, then grow to fill free HEIGHT; scroll if still taller. */
+    var k, j, PAD = 7;
+    if (!availW) return 1;
     function pcsAt(sc) {
       var out = [];
       for (k = 0; k < L.length; k++) {
-        var ln = L[k], B = ln.b; if (!B.length) continue;
+        var ln = L[k], B = ln.b; if (!B || !B.length) continue;
         for (j = 0; j < B.length; j++) {
           var R = j === 0 ? (k === 0 ? ln.w : Math.min(ln.w, B[j][1], ln.e ? ln.e[1] + PAD : ln.w)) : (ln.k ? ln.k[j - 1] : (B[j - 1][0] + B[j][1]) / 2);
           var Lx = j === B.length - 1 ? Math.max(0, B[j][0], ln.e ? ln.e[0] - PAD : 0) : (ln.k ? ln.k[j] : (B[j][0] + B[j + 1][1]) / 2);
-          out.push({ k: k, w: (R - Lx) * sc, h: ln.h * sc });
+          var pw = Math.max(1, R - Lx);
+          out.push({ k: k, w: pw * sc, h: ln.h * sc, pw: pw });
         }
       }
       return out;
@@ -430,26 +430,40 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
       if (open) H += rowH;
       return H;
     }
-    var scMin = availW / refW * 1.4;                     // prior phone readability floor (fill-width × 1.4)
-    if (heightAt(scMin) >= availH) return scMin;         // long: keep max width zoom, allow scroll
-    var lo = scMin, hi = scMin * 10, it;
-    for (it = 0; it < 20; it++) {
+    var pcs1 = pcsAt(1), maxPiece = 1, t;
+    for (t = 0; t < pcs1.length; t++) if (pcs1[t].pw > maxPiece) maxPiece = pcs1[t].pw;
+    /* Width floor: largest crop spans the stage; short hadiths then grow further to fill height */
+    var scMin = availW / maxPiece;
+    if (!isFinite(scMin) || scMin <= 0) scMin = 1;
+    if (heightAt(scMin) >= availH) return scMin; /* long: full-width, scroll */
+    var lo = scMin, hi = scMin * 12, it;
+    for (it = 0; it < 22; it++) {
       var mid = (lo + hi) / 2;
       if (heightAt(mid) <= availH) lo = mid; else hi = mid;
     }
     return lo;
   }
-  function isPhoneLayout() { return (window.innerWidth || document.documentElement.clientWidth || 0) < 700; }
+  function isPhoneLayout() {
+    var w = window.innerWidth || document.documentElement.clientWidth || 0;
+    if (w && w < 900) return true;
+    try {
+      if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return true;
+      if (window.matchMedia && window.matchMedia("(display-mode: fullscreen)").matches) return true;
+    } catch (e) {}
+    if (window.navigator && window.navigator.standalone) return true;
+    if (window.matchMedia && window.matchMedia("(hover: none) and (pointer: coarse)").matches && w < 1024) return true;
+    return false;
+  }
   function stageAvailH() {
     var st = document.querySelector(".stage"), sheet = st && st.querySelector(".sheet");
     if (!st) return 480;
-    var pad = 28;
+    var pad = 12;
     if (sheet) {
       var cs = getComputedStyle(sheet);
       pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
     }
-    /* stage already sits above the dock; body/dock safe-area padding shrinks the flex area — use clientHeight as-is */
-    return Math.max(140, st.clientHeight - pad - 4);
+    /* body/dock safe-area already shrinks flex stage — fill nearly all of clientHeight */
+    return Math.max(160, st.clientHeight - pad - 2);
   }
   function syncStageCenter() {
     var st = document.querySelector(".stage"), sheet = st && st.querySelector(".sheet");
@@ -1213,7 +1227,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   function cldInit() {
     if (typeof document === "undefined" || !document.createElement || $("btnCloud")) return;
     var mic = $("btnMic"); if (!mic || !mic.parentNode) return;
-    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); }
+    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.textContent = "tarteel-fill228"; ver.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85;padding-bottom:2px"; dk.appendChild(ver); }
     var dk2 = document.querySelector(".dock");
     var b = document.createElement("button"); b.type = "button"; b.id = "btnCloud";
     b.style.cssText = "grid-column:1/-1;width:100%;padding:7px 10px;font-size:13px;border-radius:12px;border:1px solid var(--line);background:#e8d9b9;color:var(--ink);cursor:pointer";
@@ -1249,14 +1263,14 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     cldBtn(); cldUsageShow();
     if (CLD.on) cldUsage();
     // pt217u ui_clean: hide header blurb + aside on all sizes (empty beige strip above السابق/التالي; the jump box already navigates)
-    var st = document.createElement("style"); st.textContent = "aside{display:none!important}header{padding:8px 12px;min-height:0}header>div:first-child{display:none!important}.sub{display:none!important}h1.appH{display:none!important}"; document.head.appendChild(st);
+    var st = document.createElement("style"); st.textContent = "aside{display:none!important}header{display:none!important}.sub{display:none!important}h1.appH{display:none!important}"; document.head.appendChild(st);
 
     // pt217u dropdown index: button + panel (phones too) with diacritic-insensitive search
     (function () {
       if (document.getElementById("btnIndex")) return;
       var st = document.createElement("style");
       st.textContent = [
-        "#btnIndex{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:#e8d9b9;color:var(--ink);font:inherit;cursor:pointer;white-space:nowrap}",
+        "#btnIndex{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:12px;border:1px solid #5a3a1e;background:#5a3a1e;color:#f3e9d2;font:inherit;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px rgba(90,58,30,.25)}",
         "#btnIndex .ic{font-size:18px;line-height:1}",
         "#idxOverlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(60,40,20,.35)}",
         "#idxOverlay.on{display:block}",
@@ -1270,15 +1284,20 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
         "#idxSide .hit{display:block;width:100%;text-align:right;margin:0 0 8px;padding:11px;border:0;border-radius:14px;background:#ede0c4;color:inherit;font:inherit;cursor:pointer}",
         "#idxSide .hit strong{display:block}",
         "#idxSide .hit small{display:block;color:var(--muted);margin-top:4px;line-height:1.5}",
-        "@media (min-width:701px){#btnIndex{display:inline-flex}}"
+        "#btnIndex{flex:0 0 auto}"
       ].join("");
       document.head.appendChild(st);
 
       var btn = document.createElement("button");
       btn.type = "button"; btn.id = "btnIndex";
+      btn.setAttribute("aria-label", "الفهرس");
       btn.innerHTML = '<span class="ic" aria-hidden="true">☰</span><span>الفهرس</span>';
-      var hdr = document.querySelector("header > div:last-child") || document.querySelector("header");
-      if (hdr) hdr.insertBefore(btn, hdr.firstChild);
+      var tb = document.querySelector(".toolbar");
+      if (tb) tb.insertBefore(btn, tb.firstChild);
+      else {
+        var hdr = document.querySelector("header > div:last-child") || document.querySelector("header");
+        if (hdr) hdr.insertBefore(btn, hdr.firstChild);
+      }
 
       var ov = document.createElement("div"); ov.id = "idxOverlay";
       ov.innerHTML = '<div id="idxPanel" role="dialog" aria-label="الفهرس"><div class="idxHead"><h3>الفهرس</h3><button type="button" id="idxClose" aria-label="إغلاق">إغلاق</button></div><input id="idxQ" type="search" placeholder="رقم حديث أو كلمة…" inputmode="search" autocomplete="off"><div id="idxSide"></div></div>';

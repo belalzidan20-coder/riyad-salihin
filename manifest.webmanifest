@@ -3,7 +3,7 @@
  "short_name": "رياض الصالحين",
  "lang": "ar",
  "dir": "rtl",
- "start_url": "./",
+ "start_url": "./index.html",
  "scope": "./",
  "display": "standalone",
  "background_color": "#f3e9d2",
