@@ -38,6 +38,7 @@ main{display:flex;flex-direction:column;min-width:0;min-height:0}
 button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;background:#e8d9b9;color:var(--ink);cursor:pointer}
 .gold{background:var(--gold);color:#fff8ea;font-weight:700}
 .livebtn{background:var(--bad);color:#fff;font-weight:700}
+#modeShow.on{background:var(--bad);color:#fff;font-weight:700}
 .modes button.on{background:var(--gold);color:#fff8ea;font-weight:700}
 .meta{padding:8px 18px 0}
 .title{margin:6px 0 0;font-size:20px;color:var(--gold2)}
@@ -73,7 +74,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
 .ln img{display:block;width:100%;height:100%}
 .bx{position:absolute;top:0;bottom:0;cursor:pointer;transition:none;box-sizing:border-box}
 .ln{contain:layout paint}
-.bx.hide{background:rgba(232,217,185,.95);border:1px solid rgba(90,58,30,.22);border-radius:7px;box-shadow:none}
+.bx.hide{background:var(--paper);box-shadow:0 0 0 1.5px var(--paper);border:0;border-radius:0}
 .bx.hint{background:rgba(90,58,30,.05);border:1px dashed rgba(90,58,30,.18);border-radius:7px;opacity:.9}
 .bx.seen{background:transparent;border:0;box-shadow:none;border-radius:0}
 .bx.now{background:rgba(139,90,43,.16);box-shadow:inset 0 -3px 0 #8b5a2b}
@@ -229,7 +230,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     ".dock{display:grid;grid-template-columns:1fr 1fr;grid-auto-flow:row dense;gap:6px;align-items:center}",
     ".dock>#btnMic,.dock>#modeShow{width:100%;min-width:0;padding:10px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
     ".dock>#btnMic{grid-column:1}",
-    ".dock>#modeShow{grid-column:2;display:inline-flex!important;align-items:center;justify-content:center}",
+    ".dock>#modeShow{grid-column:2;display:inline-flex!important;align-items:center;justify-content:center}",".dock>#modeShow.on{background:var(--bad);color:#fff;font-weight:700;border-color:var(--bad)}",
     ".dock>#modeHide,.dock>#modeHint,.dock>#btnHideAll,.dock>#btnWordNext,.dock>#btnWordBack{display:none!important}",
     ".dock>.prog{grid-column:1;align-self:center}",
     ".dock>#cnt{grid-column:2;text-align:center}",
@@ -1453,7 +1454,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   function cldInit() {
     if (typeof document === "undefined" || !document.createElement || $("btnCloud")) return;
     var mic = $("btnMic"); if (!mic || !mic.parentNode) return;
-    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.textContent = "tarteel-fill233"; ver.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85;padding-bottom:2px"; dk.appendChild(ver); }
+    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.textContent = "tarteel-fill234"; ver.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85;padding-bottom:2px"; dk.appendChild(ver); }
     var dk2 = document.querySelector(".dock");
     var b = document.createElement("button"); b.type = "button"; b.id = "btnCloud";
     b.style.cssText = "grid-column:1/-1;width:100%;padding:7px 10px;font-size:13px;border-radius:12px;border:1px solid var(--line);background:#e8d9b9;color:var(--ink);cursor:pointer";
