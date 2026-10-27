@@ -1159,10 +1159,8 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
             for (var i = 0; i < DATA.length; i++) if (DATA[i].n === num) { found = i; break; }
             var sd = $("side");
             if (found >= 0) {
-              qEl.value = "";
-              // show tree normally then highlight — fall through empty q after go? just call go
-              _rs();
-              go(found);
+              var h = DATA[found];
+              sd.innerHTML = '<button type="button" class="hitem active" data-go="' + found + '"><strong>' + h.n + ". " + h.title + "</strong><small>" + h.who + "</small></button>";
               return;
             }
             if (num >= 1 && num <= 1955) {
