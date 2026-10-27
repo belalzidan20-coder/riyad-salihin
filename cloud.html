@@ -126,13 +126,13 @@ html.phone .dock button{padding:8px 9px;font-size:13px}
 html.phone .jumpbox input,html.phone .jumpbox select{width:64px}
 html.phone h1{font-size:16px}
 html.phone #btnIndex{background:#5a3a1e;color:#f3e9d2;border-color:#5a3a1e;font-weight:700;padding:8px 10px;border-radius:12px;flex:0 0 auto}
-html.phone #ver{grid-column:1/-1;text-align:center;font-size:10px;color:#7a6247;line-height:1.2;opacity:1;display:block!important;padding:2px 0 0}html.phone #credit{grid-column:1/-1;text-align:center;font-size:10px;color:#7a6247;line-height:1.2;opacity:.9;display:block!important;padding:0 0 4px}
+html.phone #ver{display:none!important}html.phone #credit{grid-column:1/-1;text-align:center;font-size:10px;color:#7a6247;line-height:1.2;opacity:.9;display:block!important;padding:0 0 4px}
 html.phone #modeHide,html.phone #modeHint{display:none!important}html.phone .toolbar #modeShow{display:none!important}html.phone .dock #modeShow{display:inline-flex!important}
 html.phone .installbar p{font-size:11px}
 /* iOS Safari: use dynamic viewport so browser chrome doesn't invent gaps */
 html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill-available}html.phone body{padding-bottom:max(8px,env(safe-area-inset-bottom,0px))!important}
 
-@media (max-width:900px){.sub{display:none}aside{display:none!important}.installbar p{font-size:11px}.layout{display:flex;flex-direction:column;flex:1;min-height:0}main{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}main.stack-center{justify-content:center}.stack{flex:0 0 auto;display:flex;flex-direction:column;width:100%;min-height:0}.appLogoWrap{display:flex;justify-content:center;align-items:center;padding:4px 0 2px;flex:0 0 auto}.appLogo{height:52px;width:52px;object-fit:contain;border-radius:12px;display:block}.toolbar{padding:4px 6px;gap:6px;align-items:center;flex:0 0 auto}.meta{padding:0 8px;flex:0 0 auto}.title{font-size:15px;margin:0}.who{font-size:11px;margin:0}.heard{display:none!important;margin:0;padding:0;min-height:0;height:0;overflow:hidden}.stage{flex:0 0 auto!important;flex-grow:0!important;overflow:visible;padding:0;min-height:0!important;height:auto!important;display:block!important}.stage.vcenter{justify-content:unset}.sheet{flex:0 0 auto!important;flex-grow:0!important;height:auto!important;min-height:0!important;padding:0;border-radius:10px;border-left:none;border-right:none;margin:0;width:100%}.dock{position:relative!important;bottom:auto;gap:6px;padding:4px 8px;padding-bottom:4px;flex:0 0 auto;border-top:1px solid var(--line)}.dock button{padding:8px 9px;font-size:13px}.jumpbox input,.jumpbox select{width:64px}h1{font-size:16px}header{display:none!important}#btnIndex{background:#5a3a1e;color:#f3e9d2;border-color:#5a3a1e;font-weight:700;padding:8px 10px;border-radius:12px;flex:0 0 auto}#ver{grid-column:1/-1;text-align:center;font-size:10px;color:#7a6247;line-height:1.2;opacity:1;display:block!important;padding:2px 0 0}#credit{grid-column:1/-1;text-align:center;font-size:10px;color:#7a6247;line-height:1.2;opacity:.9;display:block!important;padding:0 0 4px}#modeHide,#modeHint{display:none!important}.toolbar #modeShow{display:none!important}.dock #modeShow{display:inline-flex!important}}
+@media (max-width:900px){.sub{display:none}aside{display:none!important}.installbar p{font-size:11px}.layout{display:flex;flex-direction:column;flex:1;min-height:0}main{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}main.stack-center{justify-content:center}.stack{flex:0 0 auto;display:flex;flex-direction:column;width:100%;min-height:0}.appLogoWrap{display:flex;justify-content:center;align-items:center;padding:4px 0 2px;flex:0 0 auto}.appLogo{height:52px;width:52px;object-fit:contain;border-radius:12px;display:block}.toolbar{padding:4px 6px;gap:6px;align-items:center;flex:0 0 auto}.meta{padding:0 8px;flex:0 0 auto}.title{font-size:15px;margin:0}.who{font-size:11px;margin:0}.heard{display:none!important;margin:0;padding:0;min-height:0;height:0;overflow:hidden}.stage{flex:0 0 auto!important;flex-grow:0!important;overflow:visible;padding:0;min-height:0!important;height:auto!important;display:block!important}.stage.vcenter{justify-content:unset}.sheet{flex:0 0 auto!important;flex-grow:0!important;height:auto!important;min-height:0!important;padding:0;border-radius:10px;border-left:none;border-right:none;margin:0;width:100%}.dock{position:relative!important;bottom:auto;gap:6px;padding:4px 8px;padding-bottom:4px;flex:0 0 auto;border-top:1px solid var(--line)}.dock button{padding:8px 9px;font-size:13px}.jumpbox input,.jumpbox select{width:64px}h1{font-size:16px}header{display:none!important}#btnIndex{background:#5a3a1e;color:#f3e9d2;border-color:#5a3a1e;font-weight:700;padding:8px 10px;border-radius:12px;flex:0 0 auto}#ver{display:none!important}#credit{grid-column:1/-1;text-align:center;font-size:10px;color:#7a6247;line-height:1.2;opacity:.9;display:block!important;padding:0 0 4px}#modeHide,#modeHint{display:none!important}.toolbar #modeShow{display:none!important}.dock #modeShow{display:inline-flex!important}}
 </style>
 </head>
 <body>
@@ -276,7 +276,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     ".dock>.prog{grid-column:1;align-self:center}",
     ".dock>#cnt{grid-column:2;text-align:center}",
     ".dock>#btnASR{grid-column:1/-1}",
-    ".dock>#ver{grid-column:1/-1;text-align:center;display:block!important;font-size:10px;color:#7a6247;opacity:1;padding:2px 0 0}",".dock>#credit{grid-column:1/-1;text-align:center;display:block!important;font-size:10px;color:#7a6247;opacity:.9;padding:0 0 4px}"
+    ".dock>#ver{display:none!important}",".dock>#credit{grid-column:1/-1;text-align:center;display:block!important;font-size:10px;color:#7a6247;opacity:.9;padding:0 0 4px}"
   ].join("");
   document.head.appendChild(st);
   /* Keep toggle label in sync if setMode is called elsewhere */
@@ -1376,7 +1376,43 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     return r;
   }
 
+  var APP_VER = "tarteel-fill238";
+  try { document.documentElement.setAttribute("data-ver", APP_VER); } catch (e) {}
+  window.APP_VER = APP_VER;
+
   // ---- «سماع سحابي»: mic -> 16 kHz PCM -> Worker proxy (holds the key) -> Deepgram nova-3 ar; transcripts go to feedTokens unchanged
+  function ownerTok() { try { return localStorage.getItem("ownerTok") || ""; } catch (e) { return ""; } }
+  function ownerHas() { return !!ownerTok(); }
+  function ownerSave(t) { try { if (t) localStorage.setItem("ownerTok", t); } catch (e) {} }
+  (function ingestOwnerHash() {
+    try {
+      var h = String(location.hash || "");
+      var m = h.match(/[#&]owner=([^&]+)/);
+      if (!m) return;
+      var t = decodeURIComponent(m[1].replace(/\+/g, " ")).trim();
+      if (!t) return;
+      ownerSave(t);
+      if (history && history.replaceState) {
+        history.replaceState(null, "", location.pathname + location.search);
+      } else {
+        location.hash = "";
+      }
+    } catch (e) {}
+  })();
+  function cldQS() {
+    var parts = [];
+    var t = ownerTok(); if (t) parts.push("owner=" + encodeURIComponent(t));
+    if (CLOUD_KT) {
+      var seen = {}, out = [];
+      for (var i = 0; i < words.length && out.length < 40; i++) {
+        var w = String(words[i]).replace(/[^\u0621-\u064A]/g, "");
+        if (w.length >= 5 && !seen[w]) { seen[w] = 1; out.push(w); }
+      }
+      if (out.length) parts.push("kt=" + encodeURIComponent(out.join(",")));
+    }
+    return parts.length ? "?" + parts.join("&") : "";
+  }
+
   var CLOUD_URL = "wss://riyad-tarteel-asr.riyad-tarteel.workers.dev/listen";   // set after deploying the Worker
   var CLOUD_KT = false;                                                    // keyterm boosting (measured slightly worse on test audio)
   var CLD = { on: false, ws: null, ctx: null, stream: null, node: null, seg: 0, fails: 0, lastFrame: 0, kaT: null };
@@ -1384,9 +1420,20 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   function cldSave(v) { try { localStorage.setItem("cloudOn", v ? "1" : "0"); } catch (e) {} }
   function cldBtn() {
     var b = $("btnCloud"); if (!b) return;
-    b.textContent = CLD.on ? "التسميع: سحابي" : "التسميع: الجهاز";
+    b.textContent = CLD.on ? "التسميع: مدفوع" : "التسميع: مجاني";
     b.setAttribute("aria-pressed", CLD.on ? "true" : "false");
-    b.title = CLD.on ? "اضغط للتبديل إلى تعرّف الجهاز (مجاني)" : "اضغط للتبديل إلى السماع السحابي";
+    b.title = CLD.on ? "اضغط للتبديل إلى التسميع المجاني" : "اضغط للتبديل إلى التسميع المدفوع";
+    if (CLD.on) {
+      b.style.background = "var(--bad)";
+      b.style.color = "#fff";
+      b.style.fontWeight = "700";
+      b.style.borderColor = "var(--bad)";
+    } else {
+      b.style.background = "#e8d9b9";
+      b.style.color = "var(--ink)";
+      b.style.fontWeight = "400";
+      b.style.borderColor = "var(--line)";
+    }
   }
   function cldTerms() {
     if (!CLOUD_KT) return "";
@@ -1405,6 +1452,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   }
   function cldStart() {
     if (!CLD.on) return;  // hard guard: never open Deepgram when device mode
+    if (!ownerHas()) { CLD.on = false; cldSave(false); cldBtn(); var us = $("usage"); if (us) us.textContent = "التسميع المدفوع غير متاح حالياً"; return; }
     if (!CLOUD_URL) { cldFallback("الخدمة غير مفعّلة بعد"); return; }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.WebSocket) { cldFallback("غير مدعوم"); return; }
     listen = true; badge(true); stuckAt = -2; stuckHint(); CLD.fails = 0; CLD.idle = false; CLD.pend = []; CLD.pre = []; CLD.preN = 0; CLD.lastVoice = Date.now();
@@ -1414,7 +1462,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   }
   function cldConnect() {
     if (!CLD.on) return;  // hard guard: device mode must never open the Deepgram WebSocket
-    var ws; try { ws = new WebSocket(CLOUD_URL + cldTerms()); } catch (e) { cldFallback("تعذّر الاتصال"); return; }
+    var ws; try { ws = new WebSocket(CLOUD_URL + cldQS()); } catch (e) { cldFallback("تعذّر الاتصال"); return; }
     ws.binaryType = "arraybuffer"; CLD.ws = ws; CLD.opened = false;
     ws.onopen = function () { if (ws !== CLD.ws) return; CLD.opened = true; CLD.fails = 0; cldOpened(); ws.addEventListener("close", cldClosed); if (CLD.pend.length) { for (var k = 0; k < CLD.pend.length; k++) ws.send(CLD.pend[k].buffer); CLD.pend = []; } $("heard").textContent = "السماع السحابي جاهز — اقرأ"; };
     ws.onmessage = function (ev) {
@@ -1489,15 +1537,20 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   function arD(n) { return String(n).replace(/\d/g, function (d) { return "٠١٢٣٤٥٦٧٨٩"[d]; }); }
   function cldUsageShow() {
     var el = $("usage"); if (!el) return;
-    if (!CLD.on) { el.textContent = "وضع الجهاز — مجاني"; return; }
-    if (CLD.useBase === null) return;
+    if (!CLD.on) { el.textContent = "التسميع: مجاني"; return; }
+    if (CLD.useBase === null) { el.textContent = ""; return; }
     var sec = CLD.useBase + (CLD.openT ? (Date.now() - CLD.openT) / 1000 : 0);
     el.textContent = "استخدمت " + arD(Math.min(CLD.useLim, Math.ceil(sec / 60))) + " من " + arD(CLD.useLim) + " دقيقة اليوم";
   }
   function cldUsage() {
     if (!CLD.on) { cldUsageShow(); return; }
+    if (!ownerHas()) { cldUsageShow(); return; }
     CLD.useT = Date.now();
-    fetch(USAGE_URL, { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (u) {
+    var uurl = USAGE_URL + (USAGE_URL.indexOf("?") >= 0 ? "&" : "?") + "owner=" + encodeURIComponent(ownerTok());
+    fetch(uurl, { cache: "no-store", headers: { "X-Owner-Token": ownerTok() } }).then(function (r) {
+      if (!r.ok) throw new Error("usage " + r.status);
+      return r.json();
+    }).then(function (u) {
       if (CLD.openT) return;                                    // a stream is open: keep the live estimate
       CLD.useBase = Number(u.usedSec) || 0; CLD.useLim = Number(u.limitMin) || 60; cldUsageShow();
     }).catch(function () {});
@@ -1524,7 +1577,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   function cldInit() {
     if (typeof document === "undefined" || !document.createElement || $("btnCloud")) return;
     var mic = $("btnMic"); if (!mic || !mic.parentNode) return;
-    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.textContent = "tarteel-fill237"; ver.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85;padding-bottom:0"; dk.appendChild(ver); } if (dk && !$("credit")) { var cr = document.createElement("div"); cr.id = "credit"; cr.textContent = "إعداد بلال زيدان"; cr.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:10px;color:#7a6247;line-height:1.2;opacity:.9;padding:0 0 4px"; dk.appendChild(cr); }
+    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.setAttribute("data-ver", APP_VER); ver.setAttribute("aria-hidden", "true"); ver.style.cssText = "display:none!important"; dk.appendChild(ver); } if (dk && !$("credit")) { var cr = document.createElement("div"); cr.id = "credit"; cr.textContent = "إعداد بلال زيدان"; cr.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:10px;color:#7a6247;line-height:1.2;opacity:.9;padding:0 0 4px"; dk.appendChild(cr); }
     var dk2 = document.querySelector(".dock");
     var b = document.createElement("button"); b.type = "button"; b.id = "btnCloud";
     b.style.cssText = "grid-column:1/-1;width:100%;padding:7px 10px;font-size:13px;border-radius:12px;border:1px solid var(--line);background:#e8d9b9;color:var(--ink);cursor:pointer";
@@ -1540,6 +1593,13 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
       var was = listen;
       if (was) stopMic();
       var next = !CLD.on;
+      if (next && !ownerHas()) {
+        CLD.on = false; cldSave(false); cldBtn();
+        var us = $("usage"); if (us) us.textContent = "التسميع المدفوع غير متاح حالياً";
+        if ($("heard")) $("heard").textContent = "التسميع المدفوع غير متاح حالياً";
+        if (was) startMic();
+        return;
+      }
       if (!next) {
         // device (Web Speech) mode — not the on-device Whisper worker
         if (ASRS.on) { ASRS.on = false; asrSave(false); asrBtn(); }
@@ -1556,6 +1616,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     });
     var ab = $("btnASR"); if (ab) ab.style.display = "none";
     CLD.on = cldSaved();
+    if (CLD.on && !ownerHas()) { CLD.on = false; cldSave(false); }
     if (ASRS.on) { ASRS.on = false; asrSave(false); asrBtn(); }
     cldBtn(); cldUsageShow();
     if (CLD.on) cldUsage();
