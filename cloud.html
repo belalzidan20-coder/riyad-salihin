@@ -306,7 +306,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   function $(id) { return document.getElementById(id); }
   function tokenize(s) { return String(s || "").trim().split(/\s+/).filter(Boolean); }
             /*MATCHER*/
-  // Matcher library (kept in sync with /*MATCHER*/ block in site HTML)
+  // Matcher library (kept in sync with MATCHER block in site HTML)
   var HAR = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g;
   function norm(s) {
     s = String(s || "");
@@ -383,10 +383,21 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     return x;
   }
   var TH = 0.6;
-  var PH = { "ث": "س", "ص": "س", "ذ": "ز", "ظ": "ز", "ض": "د", "ط": "ت", "ق": "ك", "ح": "ه", "ع": "ا", "ة": "ه", "ى": "ي" };
-  function phon(w) { return String(w || "").replace(/[ثصذظضطقحعةى]/g, function (c) { return PH[c]; }); }
+  var PH = {
+    /* ث/س , ص/س */
+    "ث": "س", "ص": "س",
+    /* ذ/ز/د , ض/د , ظ/ز/ض  → one dental class */
+    "ذ": "د", "ز": "د", "ظ": "د", "ض": "د",
+    /* ط/ت , ق/ك , ح/ه , ع/ا */
+    "ط": "ت", "ق": "ك", "ح": "ه", "ع": "ا",
+    "ة": "ه", "ى": "ي"
+  };
+  function phon(w) {
+    return String(w || "").replace(/[ثصذزظضطقحعةى]/g, function (c) { return PH[c] || c; });
+  }
   function similarP(a, b) {
     var x = similar(a, b);
+    /* no phonetic tolerance on very short words — keeps إن/من/ما/لا distinct */
     if (x >= 1 || Math.min((a || "").length, (b || "").length) < 3) return x;
     var pa = phon(a), pb = phon(b);
     if (pa === pb) return 1;
@@ -400,7 +411,62 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     if (L >= 3 && best <= editBudget(L) && best < L) x = Math.max(x, 0.61);
     return x;
   }
-  function fuzzyOk(a, b) { return similarP(a, b) >= TH; }
+  function fuzzyOk(a, b) { return similarP(a, b) >= TH || aliasOk(a, b) || nameOk(a, b); }
+
+  /* ---- user-correctable aliases (book word → accepted spoken variants) ---- */
+  var ALIASES = {};
+  function setAliases(obj) {
+    ALIASES = {};
+    if (!obj) return;
+    Object.keys(obj).forEach(function (k) {
+      var nk = norm(k);
+      if (!nk || nk === "SAW") return;
+      var arr = obj[k];
+      if (!Array.isArray(arr)) arr = [arr];
+      ALIASES[nk] = arr.map(function (v) { return norm(v); }).filter(Boolean);
+    });
+  }
+  function aliasOk(tok, e) {
+    if (!tok || !e) return false;
+    var list = ALIASES[e] || ALIASES[core(e)];
+    if (!list || !list.length) return false;
+    var i, v;
+    for (i = 0; i < list.length; i++) {
+      v = list[i];
+      if (!v) continue;
+      if (tok === v || core(tok) === v || core(tok) === core(v)) return true;
+      if (tok.length >= 3 && v.length >= 3 && (phon(tok) === phon(v) || similarP(tok, v) >= TH)) return true;
+    }
+    return false;
+  }
+
+  /* ---- proper-name / long rare token leniency ---- */
+  var NAME_MIN = 6;
+  var NAME_TH = 0.72;
+  function isLongName(e) {
+    e = String(e || "");
+    if (e.length < NAME_MIN) return false;
+    if (e === "SAW") return false;
+    return true;
+  }
+  function nameOk(tok, e) {
+    if (!tok || !e || !isLongName(e)) return false;
+    if (tok.length < 4) return false;
+    if (aliasOk(tok, e)) return true;
+    if (similarP(tok, e) >= NAME_TH) return true;
+    var pa = phon(core(tok)), pb = phon(core(e));
+    if (pb.length >= NAME_MIN && Math.abs(pa.length - pb.length) <= 2 && lev(pa, pb) <= 2) return true;
+    return false;
+  }
+  function namePiecesOk(pieces, e) {
+    if (!isLongName(e) || !pieces || pieces.length < 2) return false;
+    var cat = pieces.filter(Boolean).join("");
+    if (cat.length < 4) return false;
+    /* length must be near the name — avoid swallowing the next book word into the concat */
+    var el = Math.max(e.length, core(e).length);
+    if (Math.abs(cat.length - el) > 2) return false;
+    return nameOk(cat, e) || similarP(cat, e) >= 0.7 || phon(cat) === phon(e) || phon(cat) === phon(core(e));
+  }
   function halfOk(piece, e) {
     if (!piece || !e) return false;
     if (piece === e || core(piece) === e || piece === core(e) || core(piece) === core(e)) return true;
@@ -534,21 +600,21 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
         // try every split of tok into n contiguous non-empty pieces; each piece must fuzzy-match parts[i]
         // for n=2 keep the fast path; for n=3 allow one extra cut
         if (n === 2) {
-          var e0 = parts[0].e, e1 = parts[1].e;
-          // If tok already matches word 2 alone, it is NOT a merge of word1+word2 (blocks skip over short إن/من)
-          if (fuzzyOk(tok, e1) && tok.length <= e1.length + editBudget(e1.length)) continue;
-          if (tok.length >= e0.length + 2) {
-            for (var k = 2; k <= tok.length - 2; k++) {
-              if (halfOk(tok.slice(0, k), e0) && halfOk(tok.slice(k), e1)) return parts[1].i;
-            }
+        var e0 = parts[0].e, e1 = parts[1].e;
+        // If tok already matches word 2 alone, it is NOT a merge of word1+word2 (blocks skip over short إن/من)
+        if (fuzzyOk(tok, e1) && tok.length <= e1.length + editBudget(e1.length)) continue;
+        if (tok.length >= e0.length + 2) {
+          for (var k = 2; k <= tok.length - 2; k++) {
+            if (halfOk(tok.slice(0, k), e0) && halfOk(tok.slice(k), e1)) return parts[1].i;
           }
-          // whole-token against concatenation only when length covers BOTH parts (prevents matching just word 2)
-          var cat = e0 + e1, cat2 = core(e0) + core(e1);
-          if (tok.length >= e0.length + e1.length - 1) {
-            if ((Math.abs(tok.length - cat.length) <= 1 && lev(tok, cat) <= editBudget(cat.length)) ||
-                (Math.abs(tok.length - cat2.length) <= 1 && lev(tok, cat2) <= editBudget(cat2.length))) return parts[1].i;
-          }
-        } else if (n === 3) {
+        }
+        // whole-token against concatenation only when length covers BOTH parts (prevents matching just word 2)
+        var cat = e0 + e1, cat2 = core(e0) + core(e1);
+        if (tok.length >= e0.length + e1.length - 1) {
+          if ((Math.abs(tok.length - cat.length) <= 1 && lev(tok, cat) <= editBudget(cat.length)) ||
+              (Math.abs(tok.length - cat2.length) <= 1 && lev(tok, cat2) <= editBudget(cat2.length))) return parts[1].i;
+        }
+      } else if (n === 3) {
           var A = parts[0].e, B = parts[1].e, C = parts[2].e;
           for (var k1 = 2; k1 <= tok.length - 4; k1++) {
             if (!halfOk(tok.slice(0, k1), A)) continue;
@@ -579,11 +645,14 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
       if (pe) { st.pos = pe.hit + 1; R.hit = pe.hit; R.n = pe.n; return R; }
       // merged ASR token covering current + next (+optional third) expected words — sequential, no skip
       if ((q = merged(tok, p)) >= 0) { st.pos = q + 1; R.hit = q; return R; }
-      // direct fuzzy match on the expected next word only
+      // direct fuzzy / alias / proper-name match on the expected next word only
       if (fuzzyOk(tok, e)) { st.pos = p + 1; R.hit = p; return R; }
-      // recognizer split the current word into two tokens
-      if (nxt && tok.length < e.length && (fuzzyOk(tok + nxt, e) || similar(tok + nxt, e) >= 0.7)) {
+      // recognizer split a long name (or any word) into 2–3 spoken pieces that concatenate to it
+      if (nxt && (tok.length < e.length || isLongName(e)) && (fuzzyOk(tok + nxt, e) || namePiecesOk([tok, nxt], e) || similar(tok + nxt, e) >= 0.7)) {
         st.pos = p + 1; R.hit = p; R.n = 2; return R;
+      }
+      if (nxt && nxt2 && isLongName(e) && (tok + nxt).length < e.length - 1 && namePiecesOk([tok, nxt, nxt2], e)) {
+        st.pos = p + 1; R.hit = p; R.n = 3; return R;
       }
       // two ASR tokens → two (or current+next) book words glued wrong: tok≈e and nxt≈next
       // (already covered by sequential feeds; here only near-miss rescue with nxt confirmation)
@@ -605,7 +674,6 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     st.reset = function (pos) { if (st.pos !== pos) { st.pos = pos; st.saw = false; } };
     return st;
   }
-
 /*MATCHER*/
   function resetSpeech() { processedFinals = 0; lastInterim = ""; lastSpoken = ""; }
 
@@ -981,8 +1049,10 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     if (!matcher) return;
     ri = ri == null ? 0 : ri;
     var C = used[ri] || (used[ri] = { n: 0 }), first = norm(raw[0] || "");
-    // same result index but a new phrase after a final / clear restart (iOS replaces transcript)
-    if (C.n > 0 && C.first != null && (C.fin || similar(first, C.first) < TH))
+    // New phrase on same result index (iOS): reset only when the opening token changes.
+    // Do NOT reset merely because the prior delivery was final — auto-restart may re-echo
+    // the same final, and consume-once must survive that (keepUsed restarts).
+    if (C.n > 0 && C.first != null && similar(first, C.first) < TH)
       C = used[ri] = { n: 0 };
     C.first = first; C.fin = !!fin;
     // transcript shrank below what we already consumed — sync only; never rewind the book
@@ -1278,7 +1348,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     clearInterval(watchT);
     watchT = setInterval(function () {
       if (!listen) { clearInterval(watchT); return; }
-      if (Date.now() - lastEvt > 8000) { lastEvt = Date.now(); scheduleRestart(0); }
+      if (Date.now() - lastEvt > 5000) { lastEvt = Date.now(); scheduleRestart(0); }
     }, 2000);
   }
   /* SNDBEEP (pt191u): soft rising beep before listening, falling beep when it stops */
@@ -1316,22 +1386,26 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     clearTimeout(restartT);
     restartT = setTimeout(function () {
       if (!listen) return;
-      try { newRec(); rec.start(); restartTries = 0; }
+      try { newRec({ keepUsed: true }); rec.start(); restartTries = 0; }
       catch (e) { restartTries++; scheduleRestart(Math.min(250 * (restartTries + 1), 2000)); }   // e.g. InvalidStateError
     }, ms);
   }
-  function newRec() {
+  function newRec(opts) {
+    opts = opts || {};
+    var keepUsed = !!opts.keepUsed;
     var C = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (rec) { rec.onend = rec.onerror = rec.onresult = rec.onstart = null; try { rec.abort(); } catch (e) {} }
-    used = {}; lastEvt = Date.now();          // fresh token tracking per session even if onstart never fires
+    if (!keepUsed) used = {};                 // user-start clears; auto-restart preserves consume-once
+    lastEvt = Date.now();
     var r = rec = new C();
     r.lang = "ar-SA"; r.continuous = true; r.interimResults = true; r.maxAlternatives = 3;
-    r.onstart = function () { if (r !== rec) return; used = {}; session++; lastEvt = Date.now(); badge(true); };   // fresh token tracking per session
+    r.onstart = function () { if (r !== rec) return; if (!keepUsed) used = {}; session++; lastEvt = Date.now(); badge(true); };
     r.onend = function () { if (r !== rec) return; if (listen) { badge(true); scheduleRestart(0); } else badge(false); };
     r.onerror = function (e) {
       if (r !== rec) return;
       if (e.error === "not-allowed" || e.error === "service-not-allowed") { listen = false; clearTimeout(restartT); badge(false); alert("اسمح بالميكروفون"); return; }
-      if (listen) { badge(true); scheduleRestart(400); }      // no-speech / aborted / network / audio-capture
+      // iOS: no-speech / aborted after a pause — restart immediately; preserve consume-once
+      if (listen) { badge(true); scheduleRestart((e.error === "no-speech" || e.error === "aborted") ? 0 : 300); }
     };
     r.onresult = function (ev) {
       if (r !== rec) return;
@@ -1376,9 +1450,15 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     return r;
   }
 
-  var APP_VER = "tarteel-fill238";
+  var APP_VER = "tarteel-fill239";
   try { document.documentElement.setAttribute("data-ver", APP_VER); } catch (e) {}
   window.APP_VER = APP_VER;
+  try {
+    fetch("aliases.json", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : {}; }).then(function (obj) {
+      if (typeof setAliases === "function") setAliases(obj || {});
+    }).catch(function () {});
+  } catch (e) {}
+
 
   // ---- «سماع سحابي»: mic -> 16 kHz PCM -> Worker proxy (holds the key) -> Deepgram nova-3 ar; transcripts go to feedTokens unchanged
   function ownerTok() { try { return localStorage.getItem("ownerTok") || ""; } catch (e) { return ""; } }
