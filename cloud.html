@@ -395,12 +395,39 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   function phon(w) {
     return String(w || "").replace(/[ثصذزظضطقحعةى]/g, function (c) { return PH[c] || c; });
   }
+  /* Long-vowel / hamza-seat fold: after norm (ئ→ي, ؤ→و, أ→ا), treat medial ي↔ا and و↔ا
+     as equivalent WITHOUT combining both folds (avoids بيوت≈بات). Enables سئل≈سؤال≈سال≈سيل.
+     Length ±1 only — never used to skip book words. */
+  function softForms(w) {
+    w = String(w || "");
+    if (w.length < 3) return [w];
+    function col(s) { return s.replace(/ا+/g, "ا"); }
+    var out = [], seen = {};
+    function add(s) {
+      s = col(s);
+      if (s.length >= 3 && !seen[s]) { seen[s] = 1; out.push(s); }
+    }
+    add(w);
+    add(w.replace(/ي/g, "ا"));
+    add(w.replace(/و/g, "ا"));
+    return out;
+  }
+  function softEq(a, b) {
+    if (!a || !b) return false;
+    if (Math.min(a.length, b.length) < 3) return false;
+    if (Math.abs(a.length - b.length) > 1) return false;
+    var Fa = softForms(a), Fb = softForms(b), i, j;
+    for (i = 0; i < Fa.length; i++) for (j = 0; j < Fb.length; j++) if (Fa[i] === Fb[j]) return true;
+    return false;
+  }
   function similarP(a, b) {
     var x = similar(a, b);
     /* no phonetic tolerance on very short words — keeps إن/من/ما/لا distinct */
     if (x >= 1 || Math.min((a || "").length, (b || "").length) < 3) return x;
+    if (softEq(a, b)) return 1;
     var pa = phon(a), pb = phon(b);
     if (pa === pb) return 1;
+    if (softEq(pa, pb)) return Math.max(x, 0.95);
     x = Math.max(x, similar(pa, pb) - 0.05);
     // absolute budget on phonetic forms too
     var Fa = forms(pa), Fb = forms(pb), best = lev(pa, pb), L = Math.max(pa.length, pb.length), i, j;
@@ -1452,7 +1479,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     return r;
   }
 
-  var APP_VER = "tarteel-fill240";
+  var APP_VER = "tarteel-fill241";
   try { document.documentElement.setAttribute("data-ver", APP_VER); } catch (e) {}
   window.APP_VER = APP_VER;
   try {
