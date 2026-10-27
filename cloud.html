@@ -312,7 +312,8 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     s = String(s || "");
     if (/[\uFDFA\uFDFB\uFD40-\uFD4F]/.test(s)) return "SAW";
     return s.replace(HAR, "").replace(/[إأآٱ]/g, "ا").replace(/ؤ/g, "و").replace(/ئ/g, "ي")
-      .replace(/ء/g, "").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/[^\u0621-\u064A]+/g, "");
+      .replace(/ء/g, "").replace(/ى/g, "ي").replace(/\u06CC/g, "ي").replace(/\u06A9/g, "ك")
+      .replace(/ة/g, "ه").replace(/[^\u0621-\u064A]+/g, "");
   }
   // Strip common Arabic proclitics (وال/فال/بال/كال/لل/ال and و/ف/ب/ك/ل) for tolerant compare
   function core(w) {
@@ -476,13 +477,24 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     if (e === "SAW") return false;
     return true;
   }
+  /* Nisba stem: strip ال, optional feminine ه, final ي/و — الاشعري/الاشعرية/اشعري → اشعر */
+  function nisbaStem(w) {
+    w = core(String(w || ""));
+    if (w.length >= 5 && /ه$/.test(w)) w = w.slice(0, -1);
+    if (w.length >= 4 && /[وي]$/.test(w)) w = w.slice(0, -1);
+    return w;
+  }
   function nameOk(tok, e) {
     if (!tok || !e || !isLongName(e)) return false;
     if (tok.length < 4) return false;
     if (aliasOk(tok, e)) return true;
     if (similarP(tok, e) >= NAME_TH) return true;
+    var sa = nisbaStem(tok), sb = nisbaStem(e);
+    if (sa.length >= 4 && sa === sb) return true;
+    if (sa.length >= 4 && phon(sa) === phon(sb)) return true;
     var pa = phon(core(tok)), pb = phon(core(e));
-    if (pb.length >= NAME_MIN && Math.abs(pa.length - pb.length) <= 2 && lev(pa, pb) <= 2) return true;
+    /* 5-letter cores (اشعري/جعفي after ال) need the phon path; NAME_MIN=6 was too strict */
+    if (pb.length >= 5 && Math.abs(pa.length - pb.length) <= 2 && lev(pa, pb) <= 2) return true;
     return false;
   }
   function namePiecesOk(pieces, e) {
@@ -538,6 +550,17 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   function isQalaStem(w) {
     var c = core(w || "");
     return c === "قال" || c === "فقال" || c === "وقال";
+  }
+  function isBinStem(w) {
+    var c = core(w || "");
+    return c === "بن" || c === "ابن";
+  }
+  /* Long demonym / nisba: الاشعري، الانصاري، الثقفي… (ي / يه after norm) */
+  function isNisbaWord(w) {
+    w = String(w || "");
+    if (w.length < 5 || w === "SAW") return false;
+    if (RADIYA_TAIL[core(w)]) return false;
+    return /ي$/.test(w) || /يه$/.test(w);
   }
   /* Match book window starting at p against heard tok[/nxt[/nxt2]].
      Returns { hit, n } where hit is last book index consumed and n is heard tokens used, or null. */
@@ -603,6 +626,29 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
         var bHit = bookThummaQala ? p1 : p0;
         var hN = heardThummaQala ? 2 : 1;
         return { hit: bHit, n: hN };
+      }
+    }
+
+    /* --- abbreviated isnad (who-line short form):
+       book عبد الله بن NAME NISBA  ←  heard NISBA
+       e.g. موسى الأشعري ≈ موسى عبد الله بن قيس الأشعري
+       Sequential phrase equivalence (same class as النبي↔رسول الله); does not skip arbitrary words. --- */
+    if (core(e0) === "عبد" && e1 && isAllahWord(e1) && e2 && isBinStem(e2)) {
+      var p3 = at(p2 + 1);
+      var e3 = p3 >= 0 ? norms[p3] : "";
+      var p4 = p3 >= 0 ? at(p3 + 1) : -1;
+      var e4 = p4 >= 0 ? norms[p4] : "";
+      if (e3 && e4 && e3 !== "SAW" && !isBinStem(e3) && !isAllahWord(e3) && isNisbaWord(e4) && fuzzyOk(tok, e4)) {
+        return { hit: p4, n: 1 };
+      }
+    }
+    if (core(e0) === "عبدالله" && e1 && isBinStem(e1)) {
+      var p2u = at(p1 + 1);
+      var e2u = p2u >= 0 ? norms[p2u] : "";
+      var p3u = p2u >= 0 ? at(p2u + 1) : -1;
+      var e3u = p3u >= 0 ? norms[p3u] : "";
+      if (e2u && e3u && e2u !== "SAW" && !isBinStem(e2u) && !isAllahWord(e2u) && isNisbaWord(e3u) && fuzzyOk(tok, e3u)) {
+        return { hit: p3u, n: 1 };
       }
     }
     return null;
@@ -1479,7 +1525,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     return r;
   }
 
-  var APP_VER = "tarteel-fill241";
+  var APP_VER = "tarteel-fill242";
   try { document.documentElement.setAttribute("data-ver", APP_VER); } catch (e) {}
   window.APP_VER = APP_VER;
   try {
