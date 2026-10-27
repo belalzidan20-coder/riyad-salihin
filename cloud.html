@@ -160,7 +160,7 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
 
   function $(id) { return document.getElementById(id); }
   function tokenize(s) { return String(s || "").trim().split(/\s+/).filter(Boolean); }
-  /*MATCHER*/
+    /*MATCHER*/
   var HAR = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g;
   function norm(s) {
     s = String(s || "");
@@ -168,14 +168,17 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
     return s.replace(HAR, "").replace(/[إأآٱ]/g, "ا").replace(/ؤ/g, "و").replace(/ئ/g, "ي")
       .replace(/ء/g, "").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/[^\u0621-\u064A]+/g, "");
   }
-  // tolerant comparison of ONE heard token against the CURRENT word only (no lookahead)
+  // Strip common Arabic proclitics (وال/فال/بال/كال/لل/ال and و/ف/ب/ك/ل) for tolerant compare
   function core(w) {
+    w = String(w || "");
     var m = w.match(/^(?:وال|فال|بال|كال|لل|ال)(..+)$/);
     if (m) return m[1];
-    return (w.length > 3 && /^[وفبل]/.test(w)) ? w.slice(1) : w;
+    if (w.length > 3 && /^[وفبكل]/.test(w)) return w.slice(1);
+    return w;
   }
   function strip(w) { return core(w); }
   function lev(a, b) {
+    a = String(a || ""); b = String(b || "");
     var p = [], i, j;
     for (j = 0; j <= b.length; j++) p[j] = j;
     for (i = 1; i <= a.length; i++) {
@@ -187,44 +190,113 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
   }
   function simOne(a, b) { if (!a || !b) return 0; if (a === b) return 1; return 1 - lev(a, b) / Math.max(a.length, b.length); }
   function key(w) { return w.length >= 4 ? w.replace(/وا$/, "و").replace(/ا$/, "") : w; }
+  // Absolute edit-distance budget: ≤1 short (≤4 letters), ≤2 long (≥5)
+  function editBudget(len) { return len <= 4 ? 1 : 2; }
+  // Prefix-tolerant variants used only for comparison (never skips book words)
+  function forms(w) {
+    w = String(w || "");
+    var out = [], seen = {};
+    function add(x) { if (x && !seen[x]) { seen[x] = 1; out.push(x); } }
+    add(w);
+    add(core(w));
+    if (/^[وفبكل]/.test(w) && w.length >= 3) add(w.slice(1));
+    if (w.indexOf("ال") === 0 && w.length >= 4) add(w.slice(2));
+    if (/^(?:وال|فال|بال|كال|لل)/.test(w) && w.length >= 5) add(w.replace(/^(?:وال|فال|بال|كال|لل)/, ""));
+    if (w.length >= 4) {
+      add(key(w));
+      add(key(core(w)));
+    }
+    return out;
+  }
   function similar(a, b) {
     if (!a || !b) return 0;
     if (a === b) return 1;
     var ca = core(a), cb = core(b);
     if (ca === cb || ca === b || a === cb) return 1;
-    if (key(a) === key(b) || key(ca) === key(cb)) return 1;      // verb ending وا/و, final tanween-alef
-    if (Math.min(a.length, b.length) <= 2) {                      // short words: exact, or only a dropped long alif (قل = قال)
+    if (key(a) === key(b) || key(ca) === key(cb)) return 1;
+    // prefix-tolerant exact: any form of a equals any form of b
+    var Fa = forms(a), Fb = forms(b), i, j;
+    for (i = 0; i < Fa.length; i++) for (j = 0; j < Fb.length; j++) if (Fa[i] === Fb[j]) return 1;
+    if (Math.min(a.length, b.length) <= 2) {
       var sa = a.replace(/ا/g, ""), sb = b.replace(/ا/g, "");
       return (Math.max(a.length, b.length) <= 3 && sa.length >= 2 && sa === sb) ? 1 : 0;
     }
-    if (Math.min(a.length, b.length) >= 3 && Math.abs(a.length - b.length) <= 2 && (a.indexOf(b) !== -1 || b.indexOf(a) !== -1)) return 0.9;   // containment (old app)
+    if (Math.min(a.length, b.length) >= 3 && Math.abs(a.length - b.length) <= 2 && (a.indexOf(b) !== -1 || b.indexOf(a) !== -1)) return 0.9;
     var x = simOne(a, b);
-    if (Math.min(ca.length, cb.length) >= 3) x = Math.max(x, simOne(ca, cb), simOne(ca, b), simOne(a, cb));  // ignore over-stripped stems
+    if (Math.min(ca.length, cb.length) >= 3) x = Math.max(x, simOne(ca, cb), simOne(ca, b), simOne(a, cb));
     else { ca = a; cb = b; }
     var sh = ca.length <= cb.length ? ca : cb, lo = sh === ca ? cb : ca;
-    if (lo.length >= 4 && sh.length >= 3 && lo.indexOf(sh) === 0) x = Math.max(x, 0.75);   // prefix match
+    if (lo.length >= 4 && sh.length >= 3 && lo.indexOf(sh) === 0) x = Math.max(x, 0.75);
+    // absolute edit-distance acceptance (relative to length)
+    var best = lev(a, b), L = Math.max(a.length, b.length);
+    for (i = 0; i < Fa.length; i++) for (j = 0; j < Fb.length; j++) {
+      var d = lev(Fa[i], Fb[j]), LL = Math.max(Fa[i].length, Fb[j].length);
+      if (d < best) { best = d; L = LL; }
+    }
+    if (L >= 3 && best <= editBudget(L) && best < L) x = Math.max(x, 1 - best / L, 0.61);
     return x;
   }
   var TH = 0.6;
-  // Tarteel-like phonetic folding of letters recognizers/readers commonly confuse
   var PH = { "ث": "س", "ص": "س", "ذ": "ز", "ظ": "ز", "ض": "د", "ط": "ت", "ق": "ك", "ح": "ه", "ع": "ا", "ة": "ه", "ى": "ي" };
   function phon(w) { return String(w || "").replace(/[ثصذظضطقحعةى]/g, function (c) { return PH[c]; }); }
-  function similarP(a, b) {             // plain similarity, then on phonetically folded forms (3+ letters only)
+  function similarP(a, b) {
     var x = similar(a, b);
-    if (x >= 1 || Math.min(a.length, b.length) < 3) return x;
+    if (x >= 1 || Math.min((a || "").length, (b || "").length) < 3) return x;
     var pa = phon(a), pb = phon(b);
     if (pa === pb) return 1;
-    return Math.max(x, similar(pa, pb) - 0.05);
+    x = Math.max(x, similar(pa, pb) - 0.05);
+    // absolute budget on phonetic forms too
+    var Fa = forms(pa), Fb = forms(pb), best = lev(pa, pb), L = Math.max(pa.length, pb.length), i, j;
+    for (i = 0; i < Fa.length; i++) for (j = 0; j < Fb.length; j++) {
+      var d = lev(Fa[i], Fb[j]), LL = Math.max(Fa[i].length, Fb[j].length);
+      if (d < best) { best = d; L = LL; }
+    }
+    if (L >= 3 && best <= editBudget(L) && best < L) x = Math.max(x, 0.61);
+    return x;
   }
+  function fuzzyOk(a, b) { return similarP(a, b) >= TH; }
   var SAW_PARTS = {"صلي":1,"صلى":1,"الله":1,"عليه":1,"وسلم":1,"سلم":1,"صلا":1,"صل":1,"واله":1,"وعلي":1,"اله":1,"و":1,"السلام":1,"والسلام":1,"عليهوسلم":1,"صلاللهعليهوسلم":1,"صلياللهعليهوسلم":1};
+  var LOOK = 3; // lookahead window for ASR merge/split resync only (never skip book words)
   function makeMatcher(norms) {
     var st = { pos: 0, saw: false };
     function skip() { while (st.pos < norms.length && !norms[st.pos]) st.pos++; }
-    function merged(tok, p, e, extra) {   // recognizer merged current+next word into one token: both halves must match
-      var q = p + 1; while (q < norms.length && !norms[q]) q++;
-      if (q < norms.length && norms[q] !== "SAW" && tok.length >= e.length + extra) {
-        for (var k = 2; k <= tok.length - 2; k++)
-          if (similar(tok.slice(0, k), e) >= 0.75 && similar(tok.slice(k), norms[q]) >= 0.75) return q;
+    // tok merged from consecutive expected words starting at p (2..LOOK). Advances in order only.
+    function merged(tok, p) {
+      var maxN = Math.min(LOOK, norms.length - p);
+      if (maxN < 2 || tok.length < 4) return -1;
+      for (var n = 2; n <= maxN; n++) {
+        var parts = [], q = p, ok = true, i;
+        for (i = 0; i < n; i++) {
+          while (q < norms.length && !norms[q]) q++;
+          if (q >= norms.length || norms[q] === "SAW") { ok = false; break; }
+          parts.push({ i: q, e: norms[q] }); q++;
+        }
+        if (!ok || parts.length < 2) continue;
+        // try every split of tok into n contiguous non-empty pieces; each piece must fuzzy-match parts[i]
+        // for n=2 keep the fast path; for n=3 allow one extra cut
+        if (n === 2) {
+          var e0 = parts[0].e, e1 = parts[1].e;
+          if (tok.length >= e0.length + 2) {
+            for (var k = 2; k <= tok.length - 2; k++) {
+              if (similar(tok.slice(0, k), e0) >= 0.75 && similar(tok.slice(k), e1) >= 0.75) return parts[1].i;
+            }
+          }
+          // whole-token against concatenation only when length covers BOTH parts (prevents matching just word 2)
+          var cat = e0 + e1, cat2 = core(e0) + core(e1);
+          if (tok.length >= Math.min(cat.length, cat2.length) - 1 &&
+              Math.abs(tok.length - cat.length) <= 2 &&
+              (fuzzyOk(tok, cat) || fuzzyOk(tok, cat2))) return parts[1].i;
+        } else if (n === 3) {
+          var A = parts[0].e, B = parts[1].e, C = parts[2].e;
+          for (var k1 = 2; k1 <= tok.length - 4; k1++) {
+            if (similar(tok.slice(0, k1), A) < 0.75) continue;
+            for (var k2 = k1 + 2; k2 <= tok.length - 2; k2++) {
+              if (similar(tok.slice(k1, k2), B) >= 0.75 && similar(tok.slice(k2), C) >= 0.75) return parts[2].i;
+            }
+          }
+          var cat3 = A + B + C;
+          if (tok.length >= cat3.length - 2 && Math.abs(tok.length - cat3.length) <= 3 && fuzzyOk(tok, cat3)) return parts[2].i;
+        }
       }
       return -1;
     }
@@ -240,17 +312,27 @@ button,select{font:inherit;border:0;border-radius:12px;padding:10px 12px;backgro
         if (tok === "SAW" || SAW_PARTS[tok]) { st.pos = p + 1; st.saw = true; R.hit = p; }
         return R;
       }
-      if ((q = merged(tok, p, e, 3)) >= 0) { st.pos = q + 1; R.hit = q; return R; }
-      if (similarP(tok, e) >= TH) { st.pos = p + 1; R.hit = p; return R; }
-      if ((q = merged(tok, p, e, 2)) >= 0) { st.pos = q + 1; R.hit = q; return R; }
+      // merged ASR token covering current + next (+optional third) expected words — sequential, no skip
+      if ((q = merged(tok, p)) >= 0) { st.pos = q + 1; R.hit = q; return R; }
+      // direct fuzzy match on the expected next word only
+      if (fuzzyOk(tok, e)) { st.pos = p + 1; R.hit = p; return R; }
       // recognizer split the current word into two tokens
-      if (nxt && tok.length < e.length && similar(tok + nxt, e) >= 0.7) { st.pos = p + 1; R.hit = p; R.n = 2; return R; }
-      // anchor: near-miss on the current word, confirmed by the next heard token matching the next expected word
-      if (nxt && nxt.length >= 3 && nxt !== "SAW") {
+      if (nxt && tok.length < e.length && (fuzzyOk(tok + nxt, e) || similar(tok + nxt, e) >= 0.7)) {
+        st.pos = p + 1; R.hit = p; R.n = 2; return R;
+      }
+      // two ASR tokens → two (or current+next) book words glued wrong: tok≈e and nxt≈next
+      // (already covered by sequential feeds; here only near-miss rescue with nxt confirmation)
+      if (nxt && nxt.length >= 2 && nxt !== "SAW") {
         var q2 = p + 1; while (q2 < norms.length && !norms[q2]) q2++;
-        if (q2 < norms.length && norms[q2] !== "SAW" && similarP(nxt, norms[q2]) >= TH) {
-          var A = phon(tok), Ae = phon(e), d = Math.min(lev(A, Ae), lev(phon(core(tok)), phon(core(e))), lev(A.replace(/^و/, ""), Ae));
-          if (Math.abs(tok.length - e.length) <= 2 && d <= (e.length <= 3 ? 1 : 2) && d < Math.max(tok.length, e.length)) { st.pos = p + 1; R.hit = p; return R; }
+        if (q2 < norms.length && norms[q2] !== "SAW" && fuzzyOk(nxt, norms[q2])) {
+          var Fa = forms(phon(tok)), Fe = forms(phon(e)), best = 99, L = Math.max(tok.length, e.length), i, j;
+          for (i = 0; i < Fa.length; i++) for (j = 0; j < Fe.length; j++) {
+            var d = lev(Fa[i], Fe[j]), LL = Math.max(Fa[i].length, Fe[j].length);
+            if (d < best) { best = d; L = LL; }
+          }
+          if (L >= 2 && best <= editBudget(Math.max(L, e.length)) && best < Math.max(tok.length, e.length, 1)) {
+            st.pos = p + 1; R.hit = p; return R;
+          }
         }
       }
       return R;
