@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>رياض الصالحين</title>
 
 <link rel="manifest" href="manifest.webmanifest">
@@ -16,6 +16,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--paper:#f3e9d2;--bg:#f3e9d2;--ink:#3b2a1a;--muted:#7a6247;--gold:#8b5a2b;--gold2:#5a3a1e;--line:#d9c7a3;--ok:#6b7d3a;--bad:#a8452f}
+
+/* no pinch/double-tap zoom; fixed screen on tap; index still scrolls */
+html,body{touch-action:manipulation;overscroll-behavior:none;overscroll-behavior-y:none}
+body{position:relative}
+input,select,textarea,.jumpbox input,.jumpbox select,#idxQ,aside input.search,#q{font-size:16px!important}
+.sheet,.stage,.ln,.bx,.stack .meta,.title,.who{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+/* index panel must keep scrolling */
+#idxOverlay,#idxPanel,#idxSide,aside,#side,#idxOverlay.on{-webkit-user-select:auto;user-select:auto;touch-action:pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+#idxQ{-webkit-user-select:text;user-select:text}
+
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:#f3e9d2;color:var(--ink);font-family:Cairo,sans-serif}
 body{display:flex;flex-direction:column;padding-top:max(16px,calc(env(safe-area-inset-top,0px) + 12px));padding-left:max(10px,calc(env(safe-area-inset-left,0px) + 10px));padding-right:max(10px,calc(env(safe-area-inset-right,0px) + 10px));padding-bottom:0;box-sizing:border-box}
@@ -178,6 +188,25 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   </main>
 </div>
 <script>
+
+(function(){
+  /* iOS Safari ignores user-scalable — block pinch gestures + double-tap zoom */
+  function block(e){ e.preventDefault(); }
+  document.addEventListener('gesturestart', block, {passive:false, capture:true});
+  document.addEventListener('gesturechange', block, {passive:false, capture:true});
+  document.addEventListener('gestureend', block, {passive:false, capture:true});
+  var lastTouchEnd = 0;
+  document.addEventListener('touchend', function(e){
+    var now = Date.now();
+    if (now - lastTouchEnd <= 320) { e.preventDefault(); }
+    lastTouchEnd = now;
+  }, {passive:false, capture:true});
+  /* block multi-touch pinch on non-Safari engines */
+  document.addEventListener('touchmove', function(e){
+    if (e.touches && e.touches.length > 1) e.preventDefault();
+  }, {passive:false, capture:true});
+})();
+
 (function(){var st=document.createElement("style");st.textContent=".bx.now{box-shadow:none}#installBar,#iosHelp,#btnInstall2,#st{display:none!important}";document.head.appendChild(st);})(); /* no current-word underline */
 (function(){
   var h=document.getElementById("modeHide"),
@@ -1454,7 +1483,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   function cldInit() {
     if (typeof document === "undefined" || !document.createElement || $("btnCloud")) return;
     var mic = $("btnMic"); if (!mic || !mic.parentNode) return;
-    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.textContent = "tarteel-fill234"; ver.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85;padding-bottom:2px"; dk.appendChild(ver); }
+    var dk = document.querySelector(".dock"); if (dk && !$("usage")) { var us = document.createElement("div"); us.id = "usage"; us.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:11px;color:#7a6247;line-height:1.2;min-height:13px"; dk.appendChild(us); } if (dk && !$("ver")) { var ver = document.createElement("div"); ver.id = "ver"; ver.textContent = "tarteel-fill235"; ver.style.cssText = "grid-column:1/-1;width:100%;text-align:center;font-size:9px;color:#a89070;line-height:1;opacity:.85;padding-bottom:2px"; dk.appendChild(ver); }
     var dk2 = document.querySelector(".dock");
     var b = document.createElement("button"); b.type = "button"; b.id = "btnCloud";
     b.style.cssText = "grid-column:1/-1;width:100%;padding:7px 10px;font-size:13px;border-radius:12px;border:1px solid var(--line);background:#e8d9b9;color:var(--ink);cursor:pointer";
