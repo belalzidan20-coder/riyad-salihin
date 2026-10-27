@@ -308,9 +308,29 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
             /*MATCHER*/
   // Matcher library (kept in sync with MATCHER block in site HTML)
   var HAR = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g;
+  /* ASR often emits Western/Eastern digits for counts (100→مائة, 70→سبعين). Map before letter strip. */
+  var NUM_WORD = {
+    "1": "واحد", "2": "اثنين", "3": "ثلاثه", "4": "اربعه", "5": "خمسه",
+    "6": "سته", "7": "سبع", "8": "ثمانيه", "9": "تسعه", "10": "عشره",
+    "20": "عشرين", "30": "ثلاثين", "40": "اربعين", "50": "خمسين",
+    "60": "ستين", "70": "سبعين", "80": "ثمانين", "90": "تسعين",
+    "100": "مائه", "200": "مائتين", "300": "ثلاثمائه", "1000": "الف"
+  };
+  function eastDigits(s) {
+    return String(s || "").replace(/[\u0660-\u0669]/g, function (c) {
+      return String(c.charCodeAt(0) - 0x0660);
+    });
+  }
+  function expandNums(s) {
+    s = eastDigits(s);
+    return s.replace(/\d+/g, function (n) {
+      return Object.prototype.hasOwnProperty.call(NUM_WORD, n) ? NUM_WORD[n] : "";
+    });
+  }
   function norm(s) {
     s = String(s || "");
     if (/[\uFDFA\uFDFB\uFD40-\uFD4F]/.test(s)) return "SAW";
+    s = expandNums(s);
     return s.replace(HAR, "").replace(/[إأآٱ]/g, "ا").replace(/ؤ/g, "و").replace(/ئ/g, "ي")
       .replace(/ء/g, "").replace(/ى/g, "ي").replace(/\u06CC/g, "ي").replace(/\u06A9/g, "ك")
       .replace(/ة/g, "ه").replace(/[^\u0621-\u064A]+/g, "");
@@ -518,7 +538,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   var SAW_PARTS = {"صلي":1,"صلى":1,"الله":1,"عليه":1,"وسلم":1,"سلم":1,"صلا":1,"صل":1,"واله":1,"وعلي":1,"اله":1,"و":1,"السلام":1,"والسلام":1,"عليهوسلم":1,"صلاللهعليهوسلم":1,"صلياللهعليهوسلم":1};
 
   /* Phrase equivalences (order-preserving, no skip): Rasul/Nabi, Radiya-anh*, Qala/thumma-qala */
-  var RADIYA_TAIL = { "عنه": 1, "عنهما": 1, "عنهم": 1, "عنها": 1 };
+  var RADIYA_TAIL = { "عنه": 1, "عنهما": 1, "عنهم": 1, "عنها": 1, "عنو": 1 };
   function wordEq(a, b) {
     if (!a || !b) return false;
     if (a === b) return true;
@@ -602,6 +622,10 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
       if (core(tok) === "رضي" && h1 && isAllahWord(h1) && h2 && RADIYA_TAIL[core(h2)]) {
         return { hit: p2, n: 3 };
       }
+      /* ASR often drops الله: رضي عنه ≈ رضي الله عنه (still consumes book الله) */
+      if (core(tok) === "رضي" && h1 && RADIYA_TAIL[core(h1)] && !(h2 && isAllahWord(h2))) {
+        return { hit: p2, n: 2 };
+      }
     }
     /* also: already past رضي الله, only the tail word differs */
     if (RADIYA_TAIL[core(e0)] && p0 >= 2) {
@@ -654,7 +678,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     return null;
   }
 
-  var LOOK = 3; // lookahead window for ASR merge/split resync only (never skip book words)
+  var LOOK = 4; // lookahead window for ASR merge/split resync only (never skip book words)
   function makeMatcher(norms) {
     var st = { pos: 0, saw: false };
     function skip() { while (st.pos < norms.length && !norms[st.pos]) st.pos++; }
@@ -689,6 +713,8 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
         }
       } else if (n === 3) {
           var A = parts[0].e, B = parts[1].e, C = parts[2].e;
+          /* block if tok alone matches a later part (would skip earlier short words) */
+          if (fuzzyOk(tok, C) && tok.length <= C.length + editBudget(C.length)) continue;
           for (var k1 = 2; k1 <= tok.length - 4; k1++) {
             if (!halfOk(tok.slice(0, k1), A)) continue;
             for (var k2 = k1 + 2; k2 <= tok.length - 2; k2++) {
@@ -696,7 +722,24 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
             }
           }
           var cat3 = A + B + C;
-          if (Math.abs(tok.length - cat3.length) <= 1 && lev(tok, cat3) <= editBudget(cat3.length)) return parts[2].i;
+          if (tok.length >= A.length + B.length + C.length - 2 &&
+              Math.abs(tok.length - cat3.length) <= 1 && lev(tok, cat3) <= editBudget(cat3.length)) return parts[2].i;
+        } else if (n === 4) {
+          var A4 = parts[0].e, B4 = parts[1].e, C4 = parts[2].e, D4 = parts[3].e;
+          if (fuzzyOk(tok, D4) && tok.length <= D4.length + editBudget(D4.length)) continue;
+          if (fuzzyOk(tok, C4) && tok.length <= C4.length + editBudget(C4.length)) continue;
+          for (var a1 = 2; a1 <= tok.length - 6; a1++) {
+            if (!halfOk(tok.slice(0, a1), A4)) continue;
+            for (var a2 = a1 + 2; a2 <= tok.length - 4; a2++) {
+              if (!halfOk(tok.slice(a1, a2), B4)) continue;
+              for (var a3 = a2 + 2; a3 <= tok.length - 2; a3++) {
+                if (halfOk(tok.slice(a2, a3), C4) && halfOk(tok.slice(a3), D4)) return parts[3].i;
+              }
+            }
+          }
+          var cat4 = A4 + B4 + C4 + D4;
+          if (tok.length >= A4.length + B4.length + C4.length + D4.length - 3 &&
+              Math.abs(tok.length - cat4.length) <= 1 && lev(tok, cat4) <= editBudget(cat4.length)) return parts[3].i;
         }
       }
       return -1;
@@ -1525,7 +1568,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     return r;
   }
 
-  var APP_VER = "tarteel-fill242";
+  var APP_VER = "tarteel-fill243";
   try { document.documentElement.setAttribute("data-ver", APP_VER); } catch (e) {}
   window.APP_VER = APP_VER;
   try {
