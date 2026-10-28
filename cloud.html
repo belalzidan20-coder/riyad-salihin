@@ -678,14 +678,21 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     return null;
   }
 
-  var LOOK = 4; // lookahead window for ASR merge/split resync only (never skip book words)
+  function elideHit(tok, e0, e1) {
+  var a = [e0], b = e0.replace(/[اي]$/, "");
+  if (b !== e0 && b) a.push(b);
+  if (/^ا/.test(e0)) { a.push(e0.slice(1)); if (b.length > 1 && /^ا/.test(b)) a.push(b.slice(1)); }
+  for (var i = 0; i < a.length; i++) if (a[i] && a[i] !== e0 && tok === a[i] + e1) return true;
+  return false;
+}
+var LOOK = 4; // lookahead window for ASR merge/split resync only (never skip book words)
   function makeMatcher(norms) {
     var st = { pos: 0, saw: false };
     function skip() { while (st.pos < norms.length && !norms[st.pos]) st.pos++; }
     // tok merged from consecutive expected words starting at p (2..LOOK). Advances in order only.
     function merged(tok, p) {
       var maxN = Math.min(LOOK, norms.length - p);
-      if (maxN < 2 || tok.length < 4) return -1;
+      if (maxN < 2 || tok.length < 3) return -1;
       for (var n = maxN; n >= 2; n--) {
         var parts = [], q = p, ok = true, i;
         for (i = 0; i < n; i++) {
@@ -699,7 +706,11 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
         if (n === 2) {
         var e0 = parts[0].e, e1 = parts[1].e;
         // If tok already matches word 2 alone, it is NOT a merge of word1+word2 (blocks skip over short إن/من)
-        if (fuzzyOk(tok, e1) && tok.length <= e1.length + editBudget(e1.length)) continue;
+        /* fill244 elision merge: short function word glued with its vowel/hamza dropped
+         (ما هاجر→مهاجر, إلى ما→لما). Exact equality only; checked before the word-2 guard. */
+      if (e0.length <= 3 && e1.length >= 2 && tok.length > e1.length && elideHit(tok, e0, e1)) return parts[1].i;
+      if (tok.length < 4) continue;
+      if (fuzzyOk(tok, e1) && tok.length <= e1.length + editBudget(e1.length)) continue;
         if (tok.length >= e0.length + 2) {
           for (var k = 2; k <= tok.length - 2; k++) {
             if (halfOk(tok.slice(0, k), e0) && halfOk(tok.slice(k), e1)) return parts[1].i;
@@ -712,6 +723,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
               (Math.abs(tok.length - cat2.length) <= 1 && lev(tok, cat2) <= editBudget(cat2.length))) return parts[1].i;
         }
       } else if (n === 3) {
+        if (tok.length < 4) continue;
           var A = parts[0].e, B = parts[1].e, C = parts[2].e;
           /* block if tok alone matches a later part (would skip earlier short words) */
           if (fuzzyOk(tok, C) && tok.length <= C.length + editBudget(C.length)) continue;
@@ -725,6 +737,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
           if (tok.length >= A.length + B.length + C.length - 2 &&
               Math.abs(tok.length - cat3.length) <= 1 && lev(tok, cat3) <= editBudget(cat3.length)) return parts[2].i;
         } else if (n === 4) {
+        if (tok.length < 4) continue;
           var A4 = parts[0].e, B4 = parts[1].e, C4 = parts[2].e, D4 = parts[3].e;
           if (fuzzyOk(tok, D4) && tok.length <= D4.length + editBudget(D4.length)) continue;
           if (fuzzyOk(tok, C4) && tok.length <= C4.length + editBudget(C4.length)) continue;
@@ -1568,7 +1581,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     return r;
   }
 
-  var APP_VER = "tarteel-fill243";
+  var APP_VER = "tarteel-fill244";
   try { document.documentElement.setAttribute("data-ver", APP_VER); } catch (e) {}
   window.APP_VER = APP_VER;
   try {
