@@ -190,6 +190,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     </div>
     <div class="dock">
       <button type="button" class="gold" id="btnMic">ابدأ القراءة</button>
+      <button type="button" id="btnShowWord">إظهار كلمة</button>
       <button type="button" id="btnWordNext">كشف كلمة</button>
       <button type="button" id="btnWordBack">رجوع كلمة</button>
       <button type="button" id="btnHideAll">إخفاء من جديد</button>
@@ -227,6 +228,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
       r=document.getElementById("btnHideAll"),
       wn=document.getElementById("btnWordNext"),
       wb=document.getElementById("btnWordBack"),
+      ww=document.getElementById("btnShowWord"),
       d=document.querySelector(".dock"),
       m=document.getElementById("btnMic");
   if(!(h&&w&&d&&m))return;
@@ -266,12 +268,20 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   /* Keep order: Start/Stop, then Show/Hide, then prog/cnt/ASR/ver */
   if(w.parentNode!==d) d.insertBefore(w, m.nextSibling);
   else if(w.previousElementSibling!==m) d.insertBefore(w, m.nextSibling);
+  if(ww){
+    ww.removeAttribute("hidden");
+    ww.removeAttribute("aria-hidden");
+    ww.style.display="";
+    if(ww.parentNode!==d) d.insertBefore(ww, w.nextSibling);
+    else if(ww.previousElementSibling!==w) d.insertBefore(ww, w.nextSibling);
+  }
   var st=document.createElement("style");
   st.textContent=[
     ".dock{display:grid;grid-template-columns:1fr 1fr;grid-auto-flow:row dense;gap:6px;align-items:center}",
-    ".dock>#btnMic,.dock>#modeShow{width:100%;min-width:0;padding:10px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
-    ".dock>#btnMic{grid-column:1}",
-    ".dock>#modeShow{grid-column:2;display:inline-flex!important;align-items:center;justify-content:center}",".dock>#modeShow.on{background:var(--bad);color:#fff;font-weight:700;border-color:var(--bad)}",
+    ".dock>#btnMic,.dock>#modeShow,.dock>#btnShowWord{width:100%;min-width:0;padding:10px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    ".dock>#btnMic{grid-column:1/-1}",
+    ".dock>#modeShow{grid-column:1;display:inline-flex!important;align-items:center;justify-content:center}",".dock>#modeShow.on{background:var(--bad);color:#fff;font-weight:700;border-color:var(--bad)}",
+    ".dock>#btnShowWord{grid-column:2;display:inline-flex!important;align-items:center;justify-content:center}",
     ".dock>#modeHide,.dock>#modeHint,.dock>#btnHideAll,.dock>#btnWordNext,.dock>#btnWordBack{display:none!important}",
     ".dock>.prog{grid-column:1;align-self:center}",
     ".dock>#cnt{grid-column:2;text-align:center}",
@@ -2173,7 +2183,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     else if (btn.id === "btnNextH" || btn.id === "btnGoNext") go(idx + 1);
     else if (btn.hasAttribute("data-go")) go(Number(btn.getAttribute("data-go")));
     else if (btn.id === "btnMic") { if (SND.pend) return; if (listen || SND.on) stopMic(); else { beep(true); SND.pend = true; setTimeout(function () { SND.pend = false; startMic(); }, 380); } }
-    else if (btn.id === "btnWordNext") setCur(cur + 1);
+    else if (btn.id === "btnWordNext" || btn.id === "btnShowWord") setCur(cur + 1);
     else if (btn.id === "btnWordBack") setCur(cur - 1);
     else if (btn.id === "btnHideAll") setCur(-1);
     else if (btn.id === "modeHide") setMode("hide");
@@ -2309,6 +2319,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     modeHint:   [[587, 0, .09, "triangle"], [740, .06, .07, "triangle"]],
     showOn:     [[698, 0, .1, "sine", 932]],
     showOff:    [[932, 0, .1, "sine", 698]],
+    btnShowWord:[[988, 0, .05, "sine"], [1319, .05, .08, "sine"]],
     btnWordNext:[[1319, 0, .04, "triangle"]],
     btnWordBack:[[784, 0, .05, "triangle"]],
     btnHideAll: [[660, 0, .16, "sawtooth", 220]],
