@@ -2330,6 +2330,7 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
     btnHowInstall:[[880, 0, .08, "triangle"], [1175, .07, .08, "triangle"]],
     other:      [[700, 0, .05, "sine"]],
     btnQuiz:    [[587, 0, .07, "triangle"], [698, .06, .07, "triangle"], [880, .12, .1, "triangle"]],
+    btnTakhrij: [[392, 0, .07, "sine"], [523, .07, .08, "sine"], [659, .15, .1, "triangle"]],
     qzClose:    [[880, 0, .07, "triangle"], [587, .06, .1, "triangle"]],
     qzNext:     [[659, 0, .06], [988, .05, .09]],
     qzStart:    [[523, 0, .06], [659, .05, .06], [1047, .1, .1]],
@@ -2472,6 +2473,47 @@ html.phone,html.phone body{height:100%;min-height:100dvh;min-height:-webkit-fill
   $q("qzNext").addEventListener("click", ask);
   ["qzFrom", "qzTo"].forEach(function (id) { $q(id).addEventListener("focus", function () { ov.querySelector("input[value=rng]").checked = true; }); });
   window.__qz = { items: ITEMS, G: G };
+})();
+</script>
+
+<script>/* اختبار التخريج */
+(function () {
+  if (document.getElementById("btnTakhrij")) return;
+  var st = document.createElement("style");
+  st.textContent = [
+    "#btnTakhrij{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:12px;border:1px solid #5a3a1e;background:#e8d9b9;color:#5a3a1e;font:inherit;font-weight:700;cursor:pointer;white-space:nowrap;flex:0 0 auto}",
+    "#tkOverlay{display:none;position:fixed;inset:0;z-index:100002;background:#f3e9d2;direction:rtl}#tkOverlay.on{display:block}",
+    "#tkPanel{position:absolute;inset:0;display:flex;flex-direction:column;padding:0;padding-top:max(8px,calc(env(safe-area-inset-top,0px) + 6px));padding-bottom:max(8px,env(safe-area-inset-bottom,0px));box-sizing:border-box}",
+    "#tkPanel .tkHead{display:flex;align-items:center;gap:8px;padding:8px 12px;flex:0 0 auto}",
+    "#tkPanel .tkHead h3{margin:0;flex:1;font-size:17px;color:#5a3a1e}",
+    "#tkClose{border:0;background:#5a3a1e;color:#f3e9d2;border-radius:12px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer}",
+    "#tkFrame{flex:1;width:100%;border:0;background:#f6f2e7;min-height:0}"
+  ].join("");
+  document.head.appendChild(st);
+  var btn = document.createElement("button");
+  btn.type = "button"; btn.id = "btnTakhrij"; btn.setAttribute("aria-label", "اختبار التخريج");
+  btn.innerHTML = '<span aria-hidden="true">❖</span><span>اختبار التخريج</span>';
+  var tb = document.querySelector(".toolbar"), bq = document.getElementById("btnQuiz");
+  if (tb) {
+    if (bq && bq.parentNode === tb) tb.insertBefore(btn, bq.nextSibling);
+    else {
+      var bi = document.getElementById("btnIndex");
+      if (bi && bi.parentNode === tb) tb.insertBefore(btn, bi.nextSibling);
+      else tb.appendChild(btn);
+    }
+  }
+  var ov = document.createElement("div"); ov.id = "tkOverlay";
+  ov.innerHTML = '<div id="tkPanel" role="dialog" aria-label="اختبار التخريج"><div class="tkHead"><h3>اختبار التخريج</h3><button type="button" id="tkClose">✕ إغلاق</button></div><iframe id="tkFrame" title="اختبار التخريج" src="about:blank"></iframe></div>';
+  document.body.appendChild(ov);
+  var loaded = false;
+  function openTk() {
+    var fr = document.getElementById("tkFrame");
+    if (!loaded) { fr.src = "takhrij-quiz.html"; loaded = true; }
+    ov.classList.add("on");
+  }
+  function closeTk() { ov.classList.remove("on"); }
+  btn.addEventListener("click", openTk);
+  document.getElementById("tkClose").addEventListener("click", closeTk);
 })();
 </script>
 </body>
