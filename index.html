@@ -200,9 +200,9 @@ html.phone .toolbar .jumpbox input,html.phone .toolbar .jumpbox select{width:min
     </div>
     <div class="dock">
       <div id="micRow">
-        <button type="button" id="btnNextH">التالي</button>
-        <button type="button" class="gold" id="btnMic">ابدأ القراءة</button>
         <button type="button" id="btnPrevH">السابق</button>
+        <button type="button" class="gold" id="btnMic">ابدأ القراءة</button>
+        <button type="button" id="btnNextH">التالي</button>
       </div>
       <button type="button" id="btnShowWord">إظهار كلمة</button>
       <button type="button" id="btnWordNext">كشف كلمة</button>
@@ -281,15 +281,15 @@ html.phone .toolbar .jumpbox input,html.phone .toolbar .jumpbox select{width:min
     else if (typeof setMode === "function") setMode(next);
     syncHadithToggle();
   }, true);
-  /* Mic row: التالي | ابدأ القراءة | السابق  (RTL: next on the right, prev on the left) */
+  /* Mic row: السابق | ابدأ القراءة | التالي  (RTL: prev on the right, next on the left) */
   var row=document.getElementById("micRow");
   if(!row){ row=document.createElement("div"); row.id="micRow"; }
-  if(nx && nx.parentNode!==row) row.appendChild(nx);
-  if(m.parentNode!==row) row.appendChild(m);
   if(pv && pv.parentNode!==row) row.appendChild(pv);
-  if(nx && row.firstChild!==nx) row.insertBefore(nx, row.firstChild);
-  if(nx && m.previousElementSibling!==nx) row.insertBefore(m, nx.nextSibling);
-  if(pv && pv.previousElementSibling!==m) row.appendChild(pv);
+  if(m.parentNode!==row) row.appendChild(m);
+  if(nx && nx.parentNode!==row) row.appendChild(nx);
+  if(pv && row.firstChild!==pv) row.insertBefore(pv, row.firstChild);
+  if(pv && m.previousElementSibling!==pv) row.insertBefore(m, pv.nextSibling);
+  if(nx && nx.previousElementSibling!==m) row.appendChild(nx);
   if(row.parentNode!==d) d.insertBefore(row, d.firstChild);
   else if(d.firstChild!==row) d.insertBefore(row, d.firstChild);
   /* Keep order: mic row, then Show/Hide, then prog/cnt/ASR/ver */
